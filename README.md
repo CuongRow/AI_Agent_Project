@@ -177,13 +177,10 @@ Dự án đã được cấu hình tối ưu hóa Docker để chạy toàn bộ
 
 ## 🔑 Tài Khoản Đăng Nhập Mẫu (Mặc Định Sau Khi Seed)
 
-Hệ thống đã chuẩn bị sẵn hai tài khoản mẫu tương ứng với hai vai trò khác nhau để trải nghiệm nhanh:
+Hệ thống đã chuẩn bị sẵn tài khoản admin mẫu tương ứng với hai vai trò khác nhau để trải nghiệm nhanh:
 
-1.  **Tài Khoản Học Viên (Student):**
-    *   **Email/Tên đăng nhập:** `student` (hoặc `student@javamastery.com`)
-    *   **Mật khẩu:** `password`
-    *   *Quyền hạn:* Đọc bài học, bookmark, làm bài quiz trắc nghiệm trọn vẹn, cập nhật thông tin cá nhân.
-2.  **Tài Khoản Quản Trị Viên (Admin):**
+   
+   **Tài Khoản Quản Trị Viên (Admin):**
     *   **Email/Tên đăng nhập:** `admin` (hoặc `admin@javamastery.com`)
     *   **Mật khẩu:** `password`
     *   *Quyền hạn:* Xem biểu đồ phân tích hệ thống, quản lý khóa học (Thêm/Sửa/Xóa), xem danh sách bài học bằng accordion, quản lý danh sách người dùng (Block/Unblock tài khoản).

@@ -168,9 +168,8 @@ const Courses = () => {
                 overflow: 'hidden',
                 padding: 0
               }}>
-                {/* Course Decorative Header */}
                 <div style={{
-                  background: headerGradient,
+                  background: course.imageUrl ? `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url(${course.imageUrl}) center/cover no-repeat` : headerGradient,
                   height: '120px',
                   padding: '20px 24px',
                   color: '#ffffff',

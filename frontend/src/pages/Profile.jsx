@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { UserIcon, LockIcon, CheckIcon } from '../components/Icons';
+import { UserIcon, LockIcon } from '../components/Icons';
 
 const Profile = () => {
-  const { user, setUser } = useAuth(); // If we need to set the user state globally
+  const { user } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
-  
+
   // Profile Form States
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -58,8 +58,7 @@ const Profile = () => {
         username: username.trim(),
         email: email.trim()
       });
-      
-      // Update global context & local storage
+
       const updatedUser = response.data;
       const currentStoredUser = JSON.parse(localStorage.getItem('user') || '{}');
       const nextUser = {
@@ -68,33 +67,14 @@ const Profile = () => {
         email: updatedUser.email
       };
       localStorage.setItem('user', JSON.stringify(nextUser));
-      
-      // Attempt to trigger state update in parent context if setUser exists
-      // The context exposes user, which is a state. We can update it since the reference can be mutated or we can reload
-      window.dispatchEvent(new Event('storage')); // trigger update
-      
-      // Let's reload local user state in context by manually updating it if we can
-      // AuthContext exposes `user`. We can dispatch a custom event or let the page update locally
-      // To be safe, let's force set it if we can find a way, or just update the local storage.
-      // Wait, let's look at AuthContext.jsx: it sets the user in state, but doesn't expose setUser directly.
-      // However, we can patch AuthContext or just let the user see it.
-      // Wait, let's check how AuthContext.jsx handles the user state:
-      // It initializes from localStorage. We can refresh the page or update the state in-memory.
-      // Wait, let's check if we can update the state in-memory. In AuthContext.jsx:
-      // `const [user, setUser] = useState(null);` but it returns `user, token, isAuthenticated, loading, login, register, logout, hasRole` in Provider value.
-      // Oh! Provider value does NOT expose `setUser`!
-      // But we can patch `AuthContext.jsx` to expose a method like `updateUser(newUserData)`! That is so clean and robust!
-      // Let's implement that. In the meantime, we will call an `updateUser` if it exists.
-      
+
       setProfileData(updatedUser);
       setProfileSuccess('Cập nhật thông tin hồ sơ thành công!');
-      
-      // If our AuthContext has an update function, we will call it:
-      // We'll update the user state in-memory if supported
-      setTimeout(() => {
-        window.location.reload(); // Simple & failsafe way to sync the sidebar and header!
-      }, 1000);
 
+      // Reload after a short delay to sync the sidebar and header
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (err) {
       setProfileError(err.response?.data?.message || err.message || 'Cập nhật thất bại.');
     } finally {
@@ -130,7 +110,7 @@ const Profile = () => {
         oldPassword: oldPassword,
         newPassword: newPassword
       });
-      
+
       setPasswordSuccess('Đổi mật khẩu thành công!');
       setOldPassword('');
       setNewPassword('');
@@ -142,12 +122,33 @@ const Profile = () => {
     }
   };
 
+  // Avatar upload handler
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await api.put('/api/users/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const updatedUser = response.data;
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const next = { ...stored, avatarUrl: updatedUser.avatarUrl };
+      localStorage.setItem('user', JSON.stringify(next));
+      setProfileData(updatedUser);
+      setProfileSuccess('Cập nhật ảnh đại diện thành công!');
+    } catch (err) {
+      setProfileError(err.response?.data?.message || err.message || 'Cập nhật ảnh đại diện thất bại.');
+    }
+  };
+
   if (loading) {
     return (
       <div>
         <div className="skeleton" style={{ height: '36px', width: '30%', marginBottom: '8px' }} />
         <div className="skeleton" style={{ height: '18px', width: '45%', marginBottom: '32px' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', flexWrap: 'wrap' }} className="profile-grid-skeleton">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }} className="profile-grid-skeleton">
           <div className="card" style={{ height: '380px' }} />
           <div className="card" style={{ height: '380px' }} />
         </div>
@@ -156,7 +157,7 @@ const Profile = () => {
   }
 
   // Formatting date
-  const createdDate = profileData?.createdAt 
+  const createdDate = profileData?.createdAt
     ? new Date(profileData.createdAt).toLocaleDateString('vi-VN', {
         day: '2-digit',
         month: '2-digit',
@@ -165,7 +166,7 @@ const Profile = () => {
     : 'Chưa rõ';
 
   return (
-    <div>
+    <>
       {/* Page Header */}
       <div style={{ marginBottom: '32px' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, marginBottom: '6px' }}>
@@ -176,52 +177,57 @@ const Profile = () => {
         </p>
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '32px',
-        alignItems: 'start'
-      }} className="profile-grid">
-        
+      {/* Main grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }} className="profile-grid">
+
         {/* Profile Details Card */}
         <div className="card glass" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{
-              width: '60px',
-              height: '60px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.5rem',
-              fontWeight: 700
-            }}>
-              {username ? username.charAt(0).toUpperCase() : 'U'}
-            </div>
-            <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
-                {profileData?.username}
-              </h2>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                {profileData?.roles?.map((role) => (
-                  <span 
-                    key={role}
-                    style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 600,
-                      padding: '3px 8px',
-                      borderRadius: '12px',
-                      backgroundColor: role === 'ROLE_ADMIN' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(37, 99, 235, 0.1)',
-                      color: role === 'ROLE_ADMIN' ? 'var(--danger)' : 'var(--primary)',
-                      border: role === 'ROLE_ADMIN' ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(37, 99, 235, 0.15)'
-                    }}
-                  >
-                    {role === 'ROLE_ADMIN' ? 'Quản trị viên' : 'Học viên'}
-                  </span>
-                ))}
+            {profileData?.avatarUrl ? (
+              <img src={profileData.avatarUrl} alt="Avatar" style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.5rem',
+                fontWeight: 700
+              }}>
+                {username ? username.charAt(0).toUpperCase() : 'U'}
               </div>
+            )}
+            <input type="file" accept="image/*" style={{ display: 'none' }} id="avatarInput" onChange={handleAvatarChange} />
+            <label htmlFor="avatarInput" className="btn btn-primary" style={{ cursor: 'pointer' }}>
+              Đổi ảnh đại diện
+            </label>
+          </div>
+
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>
+              {profileData?.username}
+            </h2>
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+              {profileData?.roles?.map((role) => (
+                <span
+                  key={role}
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    backgroundColor: role === 'ROLE_ADMIN' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(37, 99, 235, 0.1)',
+                    color: role === 'ROLE_ADMIN' ? 'var(--danger)' : 'var(--primary)',
+                    border: role === 'ROLE_ADMIN' ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(37, 99, 235, 0.15)'
+                  }}
+                >
+                  {role === 'ROLE_ADMIN' ? 'Quản trị viên' : 'Học viên'}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -382,22 +388,16 @@ const Profile = () => {
             </button>
           </form>
         </div>
-
       </div>
 
+      {/* Responsive CSS */}
       <style>{`
         @media (max-width: 768px) {
-          .profile-grid {
-            grid-templateColumns: 1fr !important;
-            gap: 24px !important;
-          }
-          .profile-grid-skeleton {
-            grid-templateColumns: 1fr !important;
-            gap: 24px !important;
-          }
+          .profile-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+          .profile-grid-skeleton { grid-template-columns: 1fr !important; gap: 24px !important; }
         }
       `}</style>
-    </div>
+    </>
   );
 };
 

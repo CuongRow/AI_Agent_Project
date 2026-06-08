@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SunIcon, MoonIcon, AcademicCapIcon } from '../components/Icons';
+import ThemeToggleSwitch from '../components/ThemeToggleSwitch';
 
 const PublicLayout = () => {
   const { isAuthenticated, logout, user } = useAuth();
@@ -42,9 +43,9 @@ const PublicLayout = () => {
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button onClick={toggleTheme} className="btn btn-outline" style={{ padding: '8px', borderRadius: '50%' }} aria-label="Toggle theme">
-            {theme === 'light' ? <MoonIcon size={20} /> : <SunIcon size={20} />}
-          </button>
+          <div style={{ transform: 'scale(0.6)', transformOrigin: 'center', margin: '-16px 0' }}>
+            <ThemeToggleSwitch />
+          </div>
 
           {isAuthenticated ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

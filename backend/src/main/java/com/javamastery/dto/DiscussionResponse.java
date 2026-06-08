@@ -12,13 +12,15 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserResponse {
+public class DiscussionResponse {
     private Long id;
+    private Long lessonId;
+    private String lessonTitle;
+    private Long userId;
     private String username;
-    private String email;
-    private boolean enabled;
-    private List<String> roles;
+    private String userAvatarUrl;
+    private String content;
+    private Long parentId;
     private LocalDateTime createdAt;
-    private LocalDateTime lastActiveAt;
-    private String avatarUrl;
+    private List<DiscussionResponse> replies;
 }

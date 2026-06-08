@@ -3,6 +3,7 @@ package com.javamastery.controller;
 import com.javamastery.dto.UpdateProfileRequest;
 import com.javamastery.dto.UserResponse;
 import com.javamastery.security.UserPrincipal;
+import org.springframework.web.multipart.MultipartFile;
 import com.javamastery.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,4 +31,12 @@ public class UserController {
         UserResponse response = userService.updateUserProfile(userPrincipal.getId(), request);
         return ResponseEntity.ok(response);
     }
+    @PutMapping("/avatar")
+    public ResponseEntity<UserResponse> uploadAvatar(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            @RequestParam("file") MultipartFile file) {
+        UserResponse response = userService.updateUserAvatar(userPrincipal.getId(), file);
+        return ResponseEntity.ok(response);
+    }
 }
+

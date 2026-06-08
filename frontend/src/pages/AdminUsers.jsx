@@ -18,19 +18,34 @@ const AdminUsers = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [togglingUserId, setTogglingUserId] = useState(null);
+  const [remindingId, setRemindingId] = useState(null);
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'active', 'locked', 'inactive'
   const pageSize = 10;
 
   useEffect(() => {
     fetchUsers();
-  }, [page]);
+  }, [page, activeTab]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/admin/users?page=${page}&size=${pageSize}`);
-      setUsers(response.data.content || []);
-      setTotalPages(response.data.totalPages || 0);
-      setTotalElements(response.data.totalElements || 0);
+      if (activeTab === 'inactive') {
+        const response = await api.get('/api/admin/inactive-students');
+        setUsers(response.data || []);
+        setTotalPages(1);
+        setTotalElements(response.data?.length || 0);
+      } else {
+        let url = `/api/admin/users?page=${page}&size=${pageSize}`;
+        if (activeTab === 'active') {
+          url += '&enabled=true';
+        } else if (activeTab === 'locked') {
+          url += '&enabled=false';
+        }
+        const response = await api.get(url);
+        setUsers(response.data.content || []);
+        setTotalPages(response.data.totalPages || 0);
+        setTotalElements(response.data.totalElements || 0);
+      }
     } catch (err) {
       console.error(err);
       setError('Không thể tải danh sách người dùng.');
@@ -55,6 +70,19 @@ const AdminUsers = () => {
     }
   };
 
+  const handleRemindStudent = async (studentId) => {
+    try {
+      setRemindingId(studentId);
+      await api.post(`/api/admin/inactive-students/${studentId}/remind`);
+      alert('Đã gửi email nhắc nhở học viên thành công!');
+    } catch (err) {
+      console.error(err);
+      alert('Không thể gửi email nhắc nhở.');
+    } finally {
+      setRemindingId(null);
+    }
+  };
+
   const filteredUsers = users.filter(u =>
     u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -68,6 +96,26 @@ const AdminUsers = () => {
       month: '2-digit',
       year: 'numeric',
     });
+  };
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return 'Chưa từng hoạt động';
+    const d = new Date(dateStr);
+    return d.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const getInactiveDays = (lastActiveDateStr) => {
+    if (!lastActiveDateStr) return '—';
+    const lastActive = new Date(lastActiveDateStr);
+    const diffTime = Math.abs(new Date() - lastActive);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return `${diffDays} ngày`;
   };
 
   return (
@@ -104,6 +152,58 @@ const AdminUsers = () => {
             <SearchIcon size={18} />
           </span>
         </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid var(--border)' }}>
+        <button
+          onClick={() => { setActiveTab('all'); setPage(0); }}
+          style={{
+            padding: '12px 16px',
+            borderBottom: activeTab === 'all' ? '2px solid var(--primary)' : '2px solid transparent',
+            color: activeTab === 'all' ? 'var(--primary)' : 'var(--text-muted)',
+            background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+            fontWeight: 600, cursor: 'pointer'
+          }}
+        >
+          Tất cả
+        </button>
+        <button
+          onClick={() => { setActiveTab('active'); setPage(0); }}
+          style={{
+            padding: '12px 16px',
+            borderBottom: activeTab === 'active' ? '2px solid var(--primary)' : '2px solid transparent',
+            color: activeTab === 'active' ? 'var(--primary)' : 'var(--text-muted)',
+            background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+            fontWeight: 600, cursor: 'pointer'
+          }}
+        >
+          Đang hoạt động
+        </button>
+        <button
+          onClick={() => { setActiveTab('locked'); setPage(0); }}
+          style={{
+            padding: '12px 16px',
+            borderBottom: activeTab === 'locked' ? '2px solid var(--primary)' : '2px solid transparent',
+            color: activeTab === 'locked' ? 'var(--primary)' : 'var(--text-muted)',
+            background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+            fontWeight: 600, cursor: 'pointer'
+          }}
+        >
+          Đã khóa
+        </button>
+        <button
+          onClick={() => { setActiveTab('inactive'); setPage(0); }}
+          style={{
+            padding: '12px 16px',
+            borderBottom: activeTab === 'inactive' ? '2px solid var(--primary)' : '2px solid transparent',
+            color: activeTab === 'inactive' ? 'var(--primary)' : 'var(--text-muted)',
+            background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none',
+            fontWeight: 600, cursor: 'pointer'
+          }}
+        >
+          Học viên lười học
+        </button>
       </div>
 
       {error && (
@@ -150,7 +250,7 @@ const AdminUsers = () => {
             {/* Table Header */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '1fr 1.5fr 1fr 0.8fr 0.8fr',
+              gridTemplateColumns: activeTab === 'inactive' ? '1.2fr 1.5fr 1.5fr 1fr 1fr' : '1fr 1.5fr 1fr 0.8fr 0.8fr',
               gap: '12px',
               padding: '14px 24px',
               backgroundColor: 'var(--surface-hover)',
@@ -163,14 +263,25 @@ const AdminUsers = () => {
             }} className="users-table-header">
               <span>Tên người dùng</span>
               <span>Email</span>
-              <span>Vai trò</span>
-              <span>Ngày tạo</span>
-              <span style={{ textAlign: 'center' }}>Trạng thái</span>
+              {activeTab === 'inactive' ? (
+                <>
+                  <span>Hoạt động cuối</span>
+                  <span>Thời gian vắng</span>
+                  <span style={{ textAlign: 'center' }}>Nhắc nhở</span>
+                </>
+              ) : (
+                <>
+                  <span>Vai trò</span>
+                  <span>Ngày tạo</span>
+                  <span style={{ textAlign: 'center' }}>Trạng thái</span>
+                </>
+              )}
             </div>
 
             {/* Table Rows */}
             {filteredUsers.map((u) => {
               const isAdmin = u.roles && u.roles.includes('ROLE_ADMIN');
+              const isInstructor = u.roles && u.roles.includes('ROLE_INSTRUCTOR');
               const initials = u.username ? u.username.charAt(0).toUpperCase() : '?';
 
               return (
@@ -178,7 +289,7 @@ const AdminUsers = () => {
                   key={u.id}
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1.5fr 1fr 0.8fr 0.8fr',
+                    gridTemplateColumns: activeTab === 'inactive' ? '1.2fr 1.5fr 1.5fr 1fr 1fr' : '1fr 1.5fr 1fr 0.8fr 0.8fr',
                     gap: '12px',
                     padding: '16px 24px',
                     borderBottom: '1px solid var(--border)',
@@ -196,7 +307,9 @@ const AdminUsers = () => {
                       borderRadius: '50%',
                       background: isAdmin
                         ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-                        : 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                        : isInstructor
+                          ? 'linear-gradient(135deg, #10b981, #059669)'
+                          : 'linear-gradient(135deg, #3b82f6, #2563eb)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -227,62 +340,102 @@ const AdminUsers = () => {
                     {u.email}
                   </span>
 
-                  {/* Role badges */}
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {u.roles && u.roles.map(role => (
-                      <span key={role} style={{
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        backgroundColor: role === 'ROLE_ADMIN' ? 'rgba(239, 68, 68, 0.1)' : 'var(--primary-light)',
-                        color: role === 'ROLE_ADMIN' ? 'var(--danger)' : 'var(--primary)',
-                      }}>
-                        {role === 'ROLE_ADMIN' ? 'Admin' : 'Học viên'}
+                  {activeTab === 'inactive' ? (
+                    <>
+                      {/* Last Active */}
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {formatDateTime(u.lastActiveAt)}
                       </span>
-                    ))}
-                  </div>
 
-                  {/* Created date */}
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {formatDate(u.createdAt)}
-                  </span>
+                      {/* Days Inactive */}
+                      <span style={{ fontWeight: 600, color: 'var(--danger)' }}>
+                        {getInactiveDays(u.lastActiveAt)}
+                      </span>
 
-                  {/* Toggle enabled */}
-                  <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <button
-                      onClick={() => handleToggleEnabled(u.id)}
-                      disabled={togglingUserId === u.id || isAdmin}
-                      title={isAdmin ? 'Không thể vô hiệu hóa Admin' : (u.enabled ? 'Khóa tài khoản' : 'Mở khóa tài khoản')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        padding: '6px 14px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid',
-                        cursor: isAdmin ? 'not-allowed' : 'pointer',
-                        fontWeight: 600,
-                        fontSize: '0.78rem',
-                        transition: 'all var(--transition-fast)',
-                        backgroundColor: u.enabled ? 'var(--success-light)' : 'var(--danger-light)',
-                        borderColor: u.enabled ? 'var(--success)' : 'var(--danger)',
-                        color: u.enabled ? 'var(--success)' : 'var(--danger)',
-                        opacity: isAdmin ? 0.4 : 1,
-                      }}
-                    >
-                      {u.enabled ? <UnlockIcon size={14} /> : <LockIcon size={14} />}
-                      <span className="toggle-label">{u.enabled ? 'Hoạt động' : 'Đã khóa'}</span>
-                    </button>
-                  </div>
+                      {/* Remind Action */}
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => handleRemindStudent(u.id)}
+                          disabled={remindingId === u.id}
+                          className="btn btn-outline"
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '6px 14px',
+                            borderRadius: 'var(--radius-sm)',
+                            fontWeight: 600,
+                            fontSize: '0.78rem',
+                            borderColor: 'var(--primary)',
+                            color: 'var(--primary)',
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {remindingId === u.id ? 'Đang gửi...' : 'Gửi mail'}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Role badges */}
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {u.roles && u.roles.map(role => (
+                          <span key={role} style={{
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            backgroundColor: role === 'ROLE_ADMIN' ? 'rgba(239, 68, 68, 0.1)' : role === 'ROLE_INSTRUCTOR' ? 'rgba(16, 185, 129, 0.1)' : 'var(--primary-light)',
+                            color: role === 'ROLE_ADMIN' ? 'var(--danger)' : role === 'ROLE_INSTRUCTOR' ? 'var(--success)' : 'var(--primary)',
+                          }}>
+                            {role === 'ROLE_ADMIN' ? 'Admin' : role === 'ROLE_INSTRUCTOR' ? 'Giảng viên' : 'Học viên'}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Created date */}
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                        {formatDate(u.createdAt)}
+                      </span>
+
+                      {/* Toggle enabled */}
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => handleToggleEnabled(u.id)}
+                          disabled={togglingUserId === u.id || isAdmin}
+                          title={isAdmin ? 'Không thể vô hiệu hóa Admin' : (u.enabled ? 'Khóa tài khoản' : 'Mở khóa tài khoản')}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '6px 14px',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid',
+                            cursor: isAdmin ? 'not-allowed' : 'pointer',
+                            fontWeight: 600,
+                            fontSize: '0.78rem',
+                            transition: 'all var(--transition-fast)',
+                            backgroundColor: u.enabled ? 'var(--success-light)' : 'var(--danger-light)',
+                            borderColor: u.enabled ? 'var(--success)' : 'var(--danger)',
+                            color: u.enabled ? 'var(--success)' : 'var(--danger)',
+                            opacity: isAdmin ? 0.4 : 1,
+                          }}
+                        >
+                          {u.enabled ? <UnlockIcon size={14} /> : <LockIcon size={14} />}
+                          <span className="toggle-label">{u.enabled ? 'Hoạt động' : 'Đã khóa'}</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {activeTab !== 'inactive' && totalPages > 1 && (
             <div style={{
               display: 'flex',
               justifyContent: 'center',

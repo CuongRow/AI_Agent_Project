@@ -40,4 +40,11 @@ public class User extends BaseEntity {
     )
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
+
+    @Column(name = "last_active_at")
+    private java.time.LocalDateTime lastActiveAt;
+
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
 }
+

@@ -157,7 +157,7 @@ Sử dụng **Spring Boot 3.5.x**, **Java 17/21**, **Spring Security**, **Spring
 
 #### Các Thư mục & File Cần Tạo:
 
-- `src/main/java/com/javamastery/`
+- `src/main/java/com/javamastery//`
   - `config/`: Cấu hình Spring Security, CORS, Audit, OpenAPI Swagger, WebMvc.
   - `security/`: JWT Provider, Filter, UserDetails, Custom Authentication Entry Point.
   - `entity/`: Các Class Entity đại diện cho các bảng (User, Role, Course, Lesson, Quiz, Question, Answer, Progress, Bookmark, RefreshToken).
@@ -283,3 +283,547 @@ Chạy đồng thời:
 3. **Kiểm thử Responsive & Dark/Light Mode**:
    - Sử dụng Developer Tools chuyển sang chế độ Mobile (iPhone, iPad) để xác nhận Sidebar thu gọn thành Hamburger Menu, các Grid Card tự động xếp dọc.
    - Chuyển đổi giữa chế độ sáng và tối để kiểm tra màu sắc tương phản, tính thẩm mỹ cao.
+
+---
+
+## Bổ Sung Yêu Cầu Mới (Đợt 1 & 2)
+
+Các yêu cầu bổ sung dưới đây sẽ được triển khai trên nền tảng kiến trúc ban đầu ở trên.
+
+### Phân Tích Vấn Đề Hiện Tại & Giải Pháp
+
+#### BUG-01: Đăng ký tài khoản không lưu vào Database
+
+**Nguyên nhân gốc rễ:** Trong [AuthService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/AuthService.java), phương thức `register()` được đánh dấu `@Transactional`. Sau khi gọi `userRepository.save(user)`, nó lập tức gọi `authenticationManager.authenticate()` trong cùng giao dịch. Vì giao dịch chưa commit, bản ghi user chưa tồn tại trong DB → `CustomUserDetailsService.loadUserByUsername()` không tìm thấy user → ném `UsernameNotFoundException` → toàn bộ giao dịch bị rollback → user không được lưu.
+
+**Giải pháp:**
+- Loại bỏ việc gọi `authenticationManager.authenticate()` trong `register()`.
+- Sử dụng trực tiếp `jwtProvider.generateTokenFromUsername(savedUser.getUsername())` để tạo JWT token từ entity đã lưu.
+- Tạo `RefreshToken` trực tiếp từ `savedUser.getId()`.
+
+#### BUG-02: Biểu đồ "Đăng ký theo thời gian" không hiện dữ liệu
+
+**Nguyên nhân gốc rễ:** Trong [AdminService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/AdminService.java), phương thức `getAnalytics()` không tính toán và gán dữ liệu `userRegistrationsOverTime` vào `AnalyticsResponse` (trường này luôn trả về `null`).
+
+**Giải pháp:**
+- Thêm query `findAllCreatedAtDates()` vào `UserRepository`.
+- Trong `getAnalytics()`, nhóm danh sách `createdAt` theo ngày (`yyyy-MM-dd`) và đếm số lượng để tạo `Map<String, Long>`.
+
+---
+
+### Thay Đổi Về Hệ Thống Vai Trò (Role)
+
+#### Loại bỏ `ROLE_USER`, bổ sung vai trò chi tiết
+
+Trong file [V1__init_schema.sql](file:///d:/Java%20web%20project/backend/src/main/resources/db/migration/V1__init_schema.sql), dòng 108 hiện seed `ROLE_USER`. Vai trò này quá chung chung và sẽ được thay thế bằng các vai trò chức năng cụ thể:
+
+| Vai trò | Mô tả | Quyền hạn |
+|---------|--------|-----------|
+| `ROLE_STUDENT` | Học viên | Đọc bài, làm quiz, bookmark, xem tiến trình |
+| `ROLE_INSTRUCTOR` | Giảng viên | Thêm/sửa/xóa bài học (Lesson) cho các khóa học Admin đã tạo |
+| `ROLE_MANAGER` | Người quản lý | Theo dõi học viên không hoạt động > 15 ngày, gửi email nhắc nhở |
+| `ROLE_ADMIN` | Quản trị viên | Toàn quyền (đã có sẵn) |
+
+#### [NEW] [V5__update_roles_and_add_last_active.sql](file:///d:/Java%20web%20project/backend/src/main/resources/db/migration/V5__update_roles_and_add_last_active.sql)
+- Xóa `ROLE_USER` khỏi bảng `roles` (và các liên kết `user_roles` tương ứng).
+- Thêm `ROLE_INSTRUCTOR` và `ROLE_MANAGER` vào bảng `roles`.
+- Thêm cột `last_active_at DATETIME` vào bảng `users` để theo dõi thời gian hoạt động cuối cùng.
+- Seed tài khoản demo:
+  - `instructor` / `student123` → `ROLE_INSTRUCTOR`
+  - `manager` / `student123` → `ROLE_MANAGER`
+- Cập nhật tài khoản `student` mặc định: `last_active_at = NOW() - INTERVAL 20 DAY` (để test nhắc nhở).
+
+---
+
+### Thay Đổi Backend
+
+#### [MODIFY] [application.yml](file:///d:/Java%20web%20project/backend/src/main/resources/application.yml)
+- Thêm cấu hình Jackson serialize `LocalDateTime` thành ISO-8601 string (không phải mảng số):
+  ```yaml
+  spring:
+    jackson:
+      serialization:
+        write-dates-as-timestamps: false
+  ```
+
+#### [MODIFY] [User.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/entity/User.java)
+- Thêm trường `private LocalDateTime lastActiveAt;` với annotation `@Column(name = "last_active_at")`.
+
+#### [MODIFY] [UserRepository.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/repository/UserRepository.java)
+- Thêm: `Page<User> findByEnabled(boolean enabled, Pageable pageable);`
+- Thêm: `@Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = 'ROLE_STUDENT' AND (u.lastActiveAt IS NULL OR u.lastActiveAt < :cutoffDate)") List<User> findInactiveStudents(@Param("cutoffDate") LocalDateTime cutoffDate);`
+- Thêm: `@Query("SELECT u.createdAt FROM User u") List<LocalDateTime> findAllCreatedAtDates();`
+
+#### [MODIFY] [AuthService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/AuthService.java)
+- **`register()`**: Xóa block gọi `authenticationManager.authenticate()`. Dùng `jwtProvider.generateTokenFromUsername()` trực tiếp.
+- **`login()`**: Sau khi đăng nhập thành công, cập nhật `user.setLastActiveAt(LocalDateTime.now())` và `userRepository.save(user)`.
+
+#### [MODIFY] [AdminService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/AdminService.java)
+- Triển khai tính toán `userRegistrationsOverTime` trong `getAnalytics()`.
+- Thêm phương thức `getAllUsers(Pageable, Boolean enabled)` hỗ trợ lọc theo trạng thái.
+
+#### [MODIFY] [AdminController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/AdminController.java)
+- Cập nhật endpoint `GET /api/admin/users` thêm `@RequestParam(required = false) Boolean enabled` để lọc theo tab.
+
+#### [MODIFY] [CourseService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/CourseService.java)
+- Thêm validation trong `createCourse()` và `updateCourse()`: mô tả khóa học phải >= 200 từ, nếu không ném `BadRequestException`.
+
+#### [NEW] [LessonAdminController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/LessonAdminController.java)
+- `POST /api/admin/courses/{courseId}/lessons` — Tạo bài học mới.
+- `PUT /api/admin/lessons/{lessonId}` — Cập nhật bài học.
+- `DELETE /api/admin/lessons/{lessonId}` — Xóa bài học.
+- Phân quyền: `@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")`
+
+#### [NEW] [LessonAdminService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/LessonAdminService.java)
+- Logic CRUD cho bài học phục vụ `LessonAdminController`.
+
+#### [NEW] [ManagerController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/ManagerController.java)
+- `GET /api/manager/inactive-students` — Lấy danh sách học viên không hoạt động > 15 ngày.
+- `POST /api/manager/inactive-students/{studentId}/remind` — Gửi email nhắc nhở thủ công.
+- Phân quyền: `@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")`
+
+#### [NEW] [ManagerService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/ManagerService.java)
+- Logic nghiệp vụ phục vụ `ManagerController`.
+
+#### [NEW] [EmailService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/EmailService.java)
+- Dịch vụ gửi email giả lập (Mock), in nội dung email ra log console để dễ kiểm thử mà không cần SMTP.
+
+#### [NEW] [InactiveStudentScheduler.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/scheduler/InactiveStudentScheduler.java)
+- Cron Job chạy hàng ngày (`@Scheduled(cron = "0 0 1 * * ?")`).
+- Quét học viên không hoạt động > 15 ngày → gửi email nhắc nhở qua `EmailService`.
+
+#### [NEW] [LastActiveFilter.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/security/LastActiveFilter.java)
+- Cập nhật `lastActiveAt` của user mỗi khi gọi API hợp lệ (giới hạn tần suất tối đa 1 lần/giờ).
+
+---
+
+### Thay Đổi Frontend
+
+#### [MODIFY] [index.html](file:///d:/Java%20web%20project/frontend/index.html)
+- Đổi `<title>frontend</title>` → `<title>JavaMastery - Nền Tảng Học Lập Trình Java Trực Tuyến</title>`.
+- Nhúng thư viện Highcharts qua CDN: `<script src="https://code.highcharts.com/highcharts.js"></script>`.
+
+#### [MODIFY] [AdminLayout.jsx](file:///d:/Java%20web%20project/frontend/src/layouts/AdminLayout.jsx)
+- **Xóa** phần hiển thị email và role ở Desktop Header (dòng 198-203).
+- **Xóa** nút "Giao diện học viên" thừa trong sidebar footer (dòng 151-153).
+- Bổ sung listener `window.addEventListener('theme-change', ...)` để cập nhật theme khi thay đổi từ trang Cài đặt.
+
+#### [MODIFY] [DashboardLayout.jsx](file:///d:/Java%20web%20project/frontend/src/layouts/DashboardLayout.jsx)
+- **Xóa** phần hiển thị email ở Desktop Header (dòng 197-201).
+- Bổ sung listener `window.addEventListener('theme-change', ...)` tương tự.
+
+#### [MODIFY] [AdminDashboard.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminDashboard.jsx)
+- Thay thế biểu đồ SVG tự vẽ bằng **Highcharts column chart** (sử dụng `window.Highcharts` từ CDN).
+- Cấu hình Highcharts theo mẫu:
+  ```js
+  Highcharts.chart('registration-chart-container', {
+    chart: { type: 'column' },
+    title: { text: 'Đăng Ký Theo Thời Gian' },
+    xAxis: { categories: [...dates] },
+    yAxis: { title: { text: 'Số lượng' } },
+    series: [{ name: 'Người dùng mới', data: [...counts] }],
+    responsive: { rules: [{ condition: { maxWidth: 500 }, ... }] }
+  });
+  ```
+
+#### [MODIFY] [AdminCourses.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminCourses.jsx)
+- **Bộ đếm từ cho mô tả (>= 200 từ):** Hiển thị `"X/200 từ"` dưới textarea, màu đỏ khi < 200, màu xanh khi >= 200. Chặn submit nếu chưa đủ.
+- **Xem trước hình ảnh (Image Preview):** Khung preview tỉ lệ 16:9, bo góc mềm mại ngay dưới ô nhập URL ảnh khóa học (phong cách F8). Hiển thị ảnh thực tế hoặc placeholder mặc định.
+- **Quản lý bài học:** Thêm nút "Thêm bài học", nút Sửa/Xóa bài học trong danh sách mở rộng. Modal form thêm/sửa bài học (tiêu đề, độ khó, nội dung Markdown). Phân quyền cho `ROLE_ADMIN` và `ROLE_INSTRUCTOR`.
+
+#### [MODIFY] [Courses.jsx](file:///d:/Java%20web%20project/frontend/src/pages/Courses.jsx)
+- Hiển thị ảnh đại diện khóa học (`course.imageUrl`) ở header card.
+- Nếu có ảnh: dùng `background-image` + overlay tối `rgba(0,0,0,0.4)` để text hiển thị rõ nét.
+- Nếu không có ảnh: giữ gradient màu như hiện tại.
+
+#### [MODIFY] [AdminUsers.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminUsers.jsx)
+- Thêm thanh Tab gồm 3 tab: **"Tất cả"**, **"Đang hoạt động"**, **"Đã khóa"**.
+- Mỗi tab gửi request với param `enabled` tương ứng (`null`, `true`, `false`) để lọc phân trang từ backend.
+
+#### [MODIFY] [Profile.jsx](file:///d:/Java%20web%20project/frontend/src/pages/Profile.jsx)
+- Thiết kế lại thành 3 tab:
+  1. **"Thông tin cá nhân"** — Form cập nhật tên và email.
+  2. **"Bảo mật"** — Form đổi mật khẩu.
+  3. **"Cài đặt hệ thống"** — Chứa switch chuyển đổi giao diện sáng/tối dạng dọc.
+- **Switch Sáng/Tối dạng dọc (Vertical Toggle Switch):**
+  - Kích thước: 50px rộng × 90px cao, bo tròn góc hoàn toàn.
+  - Thanh trượt tròn chạy lên/xuống mượt mà (CSS transition).
+  - Phía trên: icon Mặt trời (☀). Phía dưới: icon Mặt trăng (🌙).
+  - Chế độ Sáng: nền trắng, Sun = xanh lá, Moon = xám.
+  - Chế độ Tối: nền đen, Sun = xám, Moon = xanh lá.
+  - Click → thay đổi theme toàn cục, dispatch `window.dispatchEvent(new Event('theme-change'))`.
+
+#### [NEW] [ManagerStudents.jsx](file:///d:/Java%20web%20project/frontend/src/pages/ManagerStudents.jsx)
+- Trang quản lý dành cho Manager.
+- Hiển thị danh sách học viên không hoạt động > 15 ngày: Tên, Email, Ngày hoạt động cuối, Số ngày không hoạt động.
+- Nút "Gửi email nhắc nhở" cho từng học viên.
+
+---
+
+### Verification Plan Bổ Sung
+
+#### Kiểm thử đăng ký
+- Đăng ký tài khoản mới → kiểm tra tài khoản được lưu thành công vào DB MySQL → tự động đăng nhập vào Dashboard.
+
+#### Kiểm thử vai trò ROLE_INSTRUCTOR
+- Đăng nhập `instructor` → truy cập trang Quản lý Khóa học → thêm/sửa/xóa bài học → xác nhận bài học hiển thị đúng ở phía học viên.
+- Xác nhận giảng viên không có quyền tạo/xóa khóa học.
+
+#### Kiểm thử vai trò ROLE_MANAGER
+- Đăng nhập `manager` → truy cập trang quản lý học viên lười học → xác nhận danh sách hiển thị `student` (20 ngày không hoạt động) → bấm gửi email → kiểm tra log console Spring Boot.
+
+#### Kiểm thử biểu đồ Highcharts
+- Truy cập `/admin` → biểu đồ cột Highcharts hiển thị lượng đăng ký mới theo ngày.
+
+#### Kiểm thử Tab trạng thái người dùng
+- Truy cập Quản lý Người dùng → chuyển giữa các tab "Tất cả" / "Đang hoạt động" / "Đã khóa" → danh sách lọc chính xác.
+
+#### Kiểm thử 200 từ & Xem trước ảnh
+- Tạo khóa học với mô tả < 200 từ → form báo lỗi, không gửi.
+- Nhập URL ảnh → khung preview hiển thị ảnh tức thì.
+
+#### Kiểm thử Switch giao diện & Tên trang web
+- Truy cập Hồ sơ → Tab Cài đặt → click switch dọc → giao diện sáng/tối chuyển đổi tức thì.
+- Kiểm tra tab trình duyệt hiển thị "JavaMastery - Nền Tảng Học Lập Trình Java Trực Tuyến".
+
+#### Kiểm thử hình ảnh khóa học
+- Truy cập trang Khóa học phía học viên → khóa học có `imageUrl` hiển thị ảnh đại diện trên card.
+
+---
+
+## Bổ Sung Yêu Cầu Mới (Đợt 3): Thay Đổi Ảnh Đại Diện Từ Máy Tính
+
+### Phân Tích & Giải Giải Pháp
+
+Hệ thống cần cung cấp tính năng cho phép người dùng thay đổi ảnh đại diện (avatar) của mình bằng cách tải tệp ảnh từ máy tính cá nhân lên thay vì chỉ dùng ảnh mặc định.
+
+**Giải pháp đề xuất:**
+1. **Lưu trữ tệp:** Lưu trữ ảnh trực tiếp trên ổ đĩa của server tại thư mục `uploads/avatars/` nằm trong thư mục chạy của backend. Để tránh trùng lặp tên tệp và khắc phục lỗi cache của trình duyệt khi cập nhật ảnh mới, tên tệp sẽ được đặt lại theo dạng `<userId>_<timestamp>.<extension>`.
+2. **Cấu hình Spring Boot:**
+   - Cấu hình kích thước tải tệp tối đa (tối đa 5MB) và kiểm tra kiểu tệp (MIME Type) ở cả client và server chỉ cho phép các định dạng ảnh phổ biến (`image/jpeg`, `image/png`, `image/gif`, `image/webp`).
+   - Cấu hình `WebMvcConfigurer` để ánh xạ đường dẫn URL `/uploads/**` tới thư mục vật lý `uploads/` trên đĩa.
+3. **Database:** Cột `avatar_url` (VARCHAR(500)) được thêm vào bảng `users` để lưu đường dẫn tương đối của ảnh đại diện (ví dụ: `/uploads/avatars/1_162391283912.png`). Ta sẽ cập nhật file SQL `V5__update_roles_and_add_last_active.sql` để bổ sung cột này hoặc tạo file di trú mới.
+4. **API Endpoint:**
+   - `POST /api/users/profile/avatar`: Nhận tệp hình ảnh qua `MultipartFile` và tiến hành lưu file, cập nhật thuộc tính `avatarUrl` trong thực thể `User`, và trả về thông tin `UserResponse` mới đã chứa đường dẫn ảnh đại diện.
+5. **Frontend UI:**
+   - Tại trang `Profile.jsx` (Tab "Thông tin cá nhân"), hiển thị ảnh đại diện hiện tại dưới dạng hình tròn.
+   - Thêm nút hover có icon máy ảnh (Camera) đè lên ảnh đại diện.
+   - Nhấp vào nút sẽ kích hoạt `<input type="file" accept="image/*" />` ẩn.
+   - Khi chọn ảnh, client-side sẽ kiểm tra định dạng và dung lượng (< 5MB), hiển thị ảnh preview tức thời bằng `URL.createObjectURL(file)`, sau đó gửi `FormData` lên backend qua API `POST /api/users/profile/avatar`.
+   - Cập nhật state `user` trong `AuthContext` để đồng bộ ảnh đại diện ở Header và Sidebar ngay lập tức mà không cần tải lại trang.
+
+---
+
+### Chi Tiết Thay Đổi
+
+#### 1. Thay Đổi Cơ Sở Dữ Liệu
+- Bổ sung lệnh SQL thêm cột `avatar_url` vào bảng `users` trong file di trú:
+  ```sql
+  ALTER TABLE users ADD COLUMN avatar_url VARCHAR(500) NULL;
+  ```
+
+#### 2. Thay Đổi Backend (`backend`)
+
+##### [MODIFY] [application.yml](file:///d:/Java%20web%20project/backend/src/main/resources/application.yml)
+- Cấu hình dung lượng file upload tối đa:
+  ```yaml
+  spring:
+    servlet:
+      multipart:
+        max-file-size: 5MB
+        max-request-size: 5MB
+  ```
+
+##### [MODIFY] [User.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/entity/User.java)
+- Thêm trường `private String avatarUrl;` cùng với ánh xạ cột `@Column(name = "avatar_url", length = 500)`.
+
+##### [MODIFY] [UserResponse.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/dto/UserResponse.java)
+- Bổ sung trường dữ liệu phản hồi:
+  ```java
+  private String avatarUrl;
+  ```
+
+##### [MODIFY] [WebMvcConfig.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/config/WebMvcConfig.java)
+- Cấu hình ánh xạ thư mục tĩnh phục vụ file tải lên:
+  ```java
+  @Override
+  public void addResourceHandlers(org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry registry) {
+      registry.addResourceHandler("/uploads/**")
+              .addResourceLocations("file:uploads/");
+  }
+  ```
+
+##### [MODIFY] [UserController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/UserController.java)
+- Tạo endpoint tải ảnh đại diện:
+  ```java
+  @PostMapping(value = "/profile/avatar", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<UserResponse> updateAvatar(
+          @AuthenticationPrincipal UserPrincipal userPrincipal,
+          @RequestParam("file") org.springframework.web.multipart.MultipartFile file) {
+      UserResponse response = userService.updateUserAvatar(userPrincipal.getId(), file);
+      return ResponseEntity.ok(response);
+  }
+  ```
+
+##### [MODIFY] [UserService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/UserService.java)
+- Triển khai logic lưu ảnh đại diện:
+  ```java
+  @org.springframework.transaction.annotation.Transactional
+  public UserResponse updateUserAvatar(Long userId, org.springframework.web.multipart.MultipartFile file) {
+      if (file.isEmpty()) {
+          throw new BadRequestException("File is empty!");
+      }
+      
+      // Validate file type
+      String contentType = file.getContentType();
+      if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/png") && 
+          !contentType.equals("image/gif") && !contentType.equals("image/webp"))) {
+          throw new BadRequestException("Only JPEG, PNG, GIF, and WEBP images are allowed!");
+      }
+ 
+      User user = userRepository.findById(userId)
+              .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+      try {
+          String originalFilename = file.getOriginalFilename();
+          String extension = originalFilename != null && originalFilename.contains(".") 
+                  ? originalFilename.substring(originalFilename.lastIndexOf(".")) 
+                  : ".png";
+          
+          String filename = userId + "_" + System.currentTimeMillis() + extension;
+          java.nio.file.Path uploadPath = java.nio.file.Paths.get("uploads/avatars");
+          
+          if (!java.nio.file.Files.exists(uploadPath)) {
+              java.nio.file.Files.createDirectories(uploadPath);
+          }
+          
+          // Delete old avatar file if exists
+          if (user.getAvatarUrl() != null && user.getAvatarUrl().startsWith("/uploads/avatars/")) {
+              String oldFilename = user.getAvatarUrl().substring(user.getAvatarUrl().lastIndexOf("/") + 1);
+              java.nio.file.Path oldFilePath = uploadPath.resolve(oldFilename);
+              java.nio.file.Files.deleteIfExists(oldFilePath);
+          }
+          
+          java.nio.file.Path filePath = uploadPath.resolve(filename);
+          java.nio.file.Files.copy(file.getInputStream(), filePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+          
+          user.setAvatarUrl("/uploads/avatars/" + filename);
+          User updatedUser = userRepository.save(user);
+          return userMapper.toResponse(updatedUser);
+      } catch (java.io.IOException e) {
+          throw new RuntimeException("Failed to store file: " + e.getMessage());
+      }
+  }
+  ```
+
+#### 3. Thay Đổi Frontend (`frontend`)
+
+##### [MODIFY] [Profile.jsx](file:///d:/Java%20web%20project/frontend/src/pages/Profile.jsx)
+- Trong form "Thông tin cá nhân", đặt một khu vực hiển thị ảnh tròn với nút thay đổi:
+  - Khi hover vào ảnh đại diện, hiển thị một overlay mờ và icon Camera.
+  - Sử dụng `<input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />`.
+  - Hàm `handleFileChange` thực hiện validate tệp (kích thước < 5MB) và gọi API:
+    ```js
+    const handleFileChange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      // Client-side validation
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Kích thước tệp không được vượt quá 5MB!");
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append("file", file);
+      
+      try {
+        setUploading(true);
+        const response = await api.post("/users/profile/avatar", formData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+        updateUser(response.data); // Cập nhật state user trong AuthContext
+        toast.success("Cập nhật ảnh đại diện thành công!");
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Tải ảnh lên thất bại!");
+      } finally {
+        setUploading(false);
+      }
+    };
+    ```
+
+##### [MODIFY] [AuthContext.jsx](file:///d:/Java%20web%20project/frontend/src/context/AuthContext.jsx)
+- Cập nhật hàm `updateUser` hoặc đảm bảo thông tin `user.avatarUrl` được cập nhật đồng bộ.
+- Cung cấp hàm hoặc biến URL cơ sở của backend (ví dụ: `http://localhost:8080`) để tạo đường dẫn ảnh đầy đủ:
+  ```js
+  const getAvatarUrl = (avatarUrl) => {
+    if (!avatarUrl) return "/default-avatar.png"; // hoặc ảnh placeholder chữ cái
+    if (avatarUrl.startsWith("http")) return avatarUrl;
+    return `${API_BASE_URL}${avatarUrl}`;
+  };
+  ```
+
+##### [MODIFY] [AdminLayout.jsx](file:///d:/Java%20web%20project/frontend/src/layouts/AdminLayout.jsx) & [DashboardLayout.jsx](file:///d:/Java%20web%20project/frontend/src/layouts/DashboardLayout.jsx)
+- Cập nhật thẻ `<img>` hiển thị avatar trên Header/Sidebar bằng cách sử dụng hàm `getAvatarUrl(user.avatarUrl)`.
+
+---
+
+### Verification Plan Bổ Sung (Đợt 3)
+
+#### Kiểm thử thủ công:
+1. **Tải lên ảnh hợp lệ:**
+   - Đăng nhập -> Vào Hồ sơ -> Tab Thông tin cá nhân.
+   - Click nút đổi ảnh -> Chọn một ảnh `.png` hoặc `.jpg` từ máy tính.
+   - Xác nhận ảnh đại diện thay đổi ngay lập tức trên UI và có Toast thông báo thành công.
+   - Kiểm tra ảnh đại diện hiển thị trên Header và Sidebar xem có đồng bộ không.
+   - F5 tải lại trang -> Xác nhận ảnh đại diện vẫn giữ nguyên ảnh mới tải lên.
+2. **Kiểm thử tệp không hợp lệ:**
+   - Click nút đổi ảnh -> Chọn một file `.pdf` hoặc `.txt`.
+   - Xác nhận client báo lỗi không hỗ trợ và không gửi request lên backend.
+3. **Kiểm thử tệp quá dung lượng:**
+   - Chọn file ảnh dung lượng 6MB.
+   - Xác nhận client báo lỗi vượt dung lượng cho phép.
+4. **Kiểm thử xóa ảnh cũ:**
+   - Thực hiện tải lên ảnh đại diện mới lần thứ 2.
+   - Kiểm tra thư mục `backend/uploads/avatars/` xem tệp ảnh cũ đã được xóa bỏ để tiết kiệm bộ nhớ chưa.
+
+---
+
+## Bổ Sung Cải Tiến (Đề xuất thêm của AI)
+
+Nhằm tối ưu hóa hơn nữa về tính bảo mật, hiệu năng và trải nghiệm người dùng (UX) cho trang web, chúng tôi đề xuất bổ sung thêm các điểm kỹ thuật sau vào kế hoạch:
+
+### 1. Nâng cấp Bảo mật & Mạng (Security & Static Handling)
+- **Cho phép truy cập Công khai Thư mục Uploads:** Cấu hình Security cho phép truy cập tự do tới đường dẫn `/uploads/**` mà không yêu cầu header Authorization.
+- **Xóa Ảnh Cũ trên Đĩa khi Cập nhật:** Khi người dùng thay đổi ảnh đại diện mới, hệ thống tự động xóa tệp ảnh cũ khỏi máy chủ vật lý nhằm tránh lãng phí dung lượng lưu trữ.
+
+### 2. Trải Nghiệm Người Dùng (UX) trên Trang Profile
+- **Thanh Tiến Trình Upload (Upload Progress Bar):** Hiển thị loading spinner hoặc thanh tiến trình khi tệp ảnh đang được truyền tải lên máy chủ.
+- **Nút Hiển Thị Mật Khẩu (Show/Hide Password):** Bổ sung nút bấm (icon Con mắt) trên biểu mẫu đổi mật khẩu để người dùng dễ dàng kiểm tra trước khi xác nhận.
+- **Cảnh báo Khớp Mật Khẩu Trực Quan:** Hiển thị thông báo đỏ/xanh lá dạng thời gian thực khi mật khẩu nhập lại khớp/không khớp với mật khẩu mới.
+
+### 3. Đồng bộ hóa Trạng thái Toàn cục (State Syncing)
+- **Cập Nhật Avatar Đồng Bộ:** Đảm bảo khi thông tin hồ sơ được chỉnh sửa thành công, các thành phần giao diện khác như Header hay Sidebar cũng sẽ cập nhật ngay lập tức thông qua AuthContext mà không cần tải lại trang.
+
+- **Cập Nhật Avatar Đồng Bộ:** Đảm bảo khi thông tin hồ sơ được chỉnh sửa thành công, các thành phần giao diện khác như Header hay Sidebar cũng sẽ cập nhật ngay lập tức thông qua AuthContext mà không cần tải lại trang.
+
+---
+
+## Bổ Sung Yêu Cầu Mới (Đợt 4): Sử dụng mật khẩu đơn giản (Plain Text) & Hoàn thiện Phân luồng Vai trò (Loại bỏ Manager, Instructor có đầy đủ quyền giảng dạy)
+
+### 1. Phân Tích & Giải Pháp
+
+#### Yêu cầu 1: Sử dụng mật khẩu đơn giản thay vì mã hóa hash
+Để thuận tiện cho việc kiểm tra và hiển thị mật khẩu người dùng trong quá trình test/inspect cơ sở dữ liệu:
+- **Thay đổi PasswordEncoder:** Trong [SecurityConfig.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/config/SecurityConfig.java), chuyển đổi bean `PasswordEncoder` từ `BCryptPasswordEncoder` sang `NoOpPasswordEncoder.getInstance()`. Lưu và so sánh mật khẩu dạng chuỗi thô.
+- **Cập nhật dữ liệu Seed:**
+  - Thay đổi các chuỗi BCrypt hash trong các file migration SQL ([V2__seed_roles_and_admin.sql](file:///d:/Java%20web%20project/backend/src/main/resources/db/migration/V2__seed_roles_and_admin.sql) và [V5__update_roles_and_add_last_active.sql](file:///d:/Java%20web%20project/backend/src/main/resources/db/migration/V5__update_roles_and_add_last_active.sql)) thành mật khẩu đơn giản tương ứng.
+  - Đổi `admin` thành `'admin123'`.
+  - Đổi `student` thành `'student123'`.
+  - Đổi `instructor` thành `'instructor123'` (có mật khẩu riêng như yêu cầu).
+- **Lưu ý:** Reset database bằng `docker compose down -v` và chạy lại hoặc `mvn flyway:clean flyway:migrate` để cập nhật Flyway checksum.
+
+#### Yêu cầu 2: Loại bỏ vai trò Manager và chuyển chức năng sang Admin
+- Do "manager là admin luôn nên bỏ manager", ta xóa bỏ hoàn toàn `ROLE_MANAGER` và tài khoản `manager` trong hệ thống.
+- Chuyển các chức năng theo dõi học viên không hoạt động và gửi email nhắc nhở từ [ManagerController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/ManagerController.java) sang [AdminController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/AdminController.java) dưới route `/api/admin/inactive-students` và `/api/admin/inactive-students/{studentId}/remind`.
+- Xóa bỏ layout `/manager` và chuyển tab "Học viên không hoạt động" vào trang [AdminUsers.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminUsers.jsx) để Admin quản lý tập trung.
+
+#### Yêu cầu 3: Hoàn thiện vai trò Instructor (`ROLE_INSTRUCTOR`) giảng dạy
+Instructor có các quyền và chức năng tương đương một giáo viên:
+- **Tạo, sửa, xóa khóa học và bài học:** Cho phép `ROLE_INSTRUCTOR` gọi các API của `CourseController` và `LessonAdminController` (phân quyền `@PreAuthorize("hasAnyRole('ADMIN', 'INSTRUCTOR')")`).
+- **Upload video/tài liệu bài học:**
+  - Bổ sung API tải tài liệu bài học: `POST /api/admin/lessons/upload` lưu trữ tệp vào thư mục `uploads/materials/`.
+  - Trên giao diện Modal bài học ([AdminCourses.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminCourses.jsx)), thêm trường tải lên file video/tài liệu bài học, hiển thị URL và cho phép chèn link vào Markdown bài học.
+- **Tạo quiz/bài tập:**
+  - Viết các API CRUD cho Quiz và Câu hỏi/Đáp án trong `QuizAdminController.java`.
+  - Trên giao diện mở rộng của khóa học ([AdminCourses.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminCourses.jsx)), tích hợp nút "+ Tạo Quiz" / "Sửa Quiz" / "Xóa Quiz" bên cạnh mỗi bài học. Khi bấm vào, mở Modal trình tạo Quiz cho phép thêm/sửa/xóa câu hỏi trắc nghiệm (nhập nội dung câu hỏi, mô tả giải thích, danh sách đáp án, tích chọn đáp án đúng).
+- **Chấm điểm & Theo dõi tiến độ học viên:**
+  - Viết API `GET /api/admin/students/progress` trong `AdminController.java` trả về danh sách học viên, số bài đã học, điểm quiz trung bình và lịch sử làm quiz chi tiết.
+  - Tạo trang giao diện mới `AdminGrades.jsx` ("Tiến độ & Điểm số") hiển thị danh sách học viên và cho phép xem chi tiết bảng điểm lịch sử làm bài ("Chấm điểm" tự động từ hệ thống).
+- **Hỏi đáp / Discussion trong bài học:**
+  - Thiết kế bảng cơ sở dữ liệu `discussions` (lưu thảo luận của từng bài học và phản hồi của giảng viên/admin).
+  - Viết API `GET /api/lessons/{lessonId}/discussions` và `POST /api/lessons/{lessonId}/discussions` (đăng bài thảo luận/trả lời).
+  - Giao diện Student ([LessonDetail.jsx](file:///d:/Java%20web%20project/frontend/src/pages/LessonDetail.jsx)): Thêm khu vực "Hỏi đáp & Thảo luận" ở cuối bài học.
+  - Giao diện Admin/Instructor: Thêm trang `AdminDiscussions.jsx` hiển thị danh sách câu hỏi thảo luận mới nhất trên toàn hệ thống và cho phép giảng viên/admin nhấp trả lời trực tiếp.
+
+### 2. Chi Tiết Thay Đổi
+
+#### Thay Đổi Cơ Sở Dữ Liệu
+- Cập nhật [V5__update_roles_and_add_last_active.sql](file:///d:/Java%20web%20project/backend/src/main/resources/db/migration/V5__update_roles_and_add_last_active.sql) để loại bỏ `ROLE_MANAGER` và user `manager`. Cấu hình mật khẩu đơn giản cho `instructor`.
+- [NEW] [V6__create_discussions_schema.sql](file:///d:/Java%20web%20project/backend/src/main/resources/db/migration/V6__create_discussions_schema.sql) để khởi tạo bảng `discussions` chứa dữ liệu thảo luận/hỏi đáp.
+
+#### Thay Đổi Backend (`backend`)
+
+##### [MODIFY] [SecurityConfig.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/config/SecurityConfig.java)
+- Thay đổi `BCryptPasswordEncoder` thành `NoOpPasswordEncoder.getInstance()`.
+
+##### [DELETE] [ManagerController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/ManagerController.java) & [ManagerService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/ManagerService.java)
+- Xóa bỏ các file controller và service dành riêng cho Manager.
+
+##### [MODIFY] [CourseController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/CourseController.java)
+- Đổi quyền `@PreAuthorize` từ `hasRole('ADMIN')` thành `hasAnyRole('ADMIN', 'INSTRUCTOR')`.
+
+##### [MODIFY] [AdminController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/AdminController.java) & [AdminService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/AdminService.java)
+- Thêm endpoint `/api/admin/inactive-students` và `/api/admin/inactive-students/{studentId}/remind` (Admin đóng vai trò quản lý).
+- Thêm endpoint `/api/admin/students/progress` trả về tiến độ và kết quả làm bài của học viên.
+
+##### [NEW] [QuizAdminController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/QuizAdminController.java) & [QuizAdminService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/QuizAdminService.java)
+- Xây dựng API CRUD Quiz, Question, Answer cho Admin & Instructor.
+
+##### [NEW] [Discussion.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/entity/Discussion.java) & [DiscussionRepository.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/repository/DiscussionRepository.java)
+- Entity thảo luận và repository tương ứng.
+
+##### [NEW] [DiscussionController.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/controller/DiscussionController.java) & [DiscussionService.java](file:///d:/Java%20web%20project/backend/src/main/java/com/javamastery/service/DiscussionService.java)
+- Xây dựng các API tải danh sách và gửi bình luận thảo luận.
+
+#### Thay Đổi Frontend (`frontend`)
+
+##### [MODIFY] [App.jsx](file:///d:/Java%20web%20project/frontend/src/App.jsx)
+- Cấu hình lại `ProtectedRoute` và `GuestRoute` điều hướng 3 vai trò: Admin (`/admin`), Instructor (`/admin/courses`), Student (`/dashboard`).
+- Thêm đường dẫn trang `AdminGrades` (`/admin/grades`) và `AdminDiscussions` (`/admin/discussions`).
+- Xóa bỏ toàn bộ route `/manager`.
+
+##### [MODIFY] [AdminLayout.jsx](file:///d:/Java%20web%20project/frontend/src/layouts/AdminLayout.jsx)
+- Cập nhật Sidebar hiển thị menu tương ứng:
+  - Admin: Thống kê, Người dùng, Khóa học, Tiến độ & Điểm số, Hỏi đáp.
+  - Instructor: Khóa học, Tiến độ & Điểm số, Hỏi đáp.
+
+##### [MODIFY] [AdminUsers.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminUsers.jsx)
+- Cập nhật hiển thị Badge vai trò: Admin, Giảng viên, Học viên.
+- Thêm Tab thứ 4 "Học viên không hoạt động" để Admin quản lý gửi mail nhắc nhở trực tiếp (thay thế Manager).
+
+##### [MODIFY] [AdminCourses.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminCourses.jsx)
+- Cho phép cả Admin và Instructor CRUD khóa học và bài học.
+- Tích hợp tính năng Upload Video/Tài liệu bên trong modal Bài học.
+- Tích hợp giao diện quản lý câu hỏi trắc nghiệm (Quiz Editor) bên trong danh sách bài học mở rộng.
+
+##### [NEW] [AdminGrades.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminGrades.jsx)
+- Hiển thị danh sách học viên kèm theo số bài học hoàn thành, điểm số trung bình. Cho phép xem lịch sử làm Quiz của từng học viên.
+
+##### [NEW] [AdminDiscussions.jsx](file:///d:/Java%20web%20project/frontend/src/pages/AdminDiscussions.jsx)
+- Trang quản lý thảo luận chung cho Giảng viên/Admin để dễ dàng lọc và trả lời các thắc mắc của học viên.
+
+##### [MODIFY] [LessonDetail.jsx](file:///d:/Java%20web%20project/frontend/src/pages/LessonDetail.jsx)
+- Nhúng hộp thoại Thảo luận & Hỏi đáp bên dưới nội dung bài học.
+
+### 3. Verification Plan
+
+#### Automated Tests
+- Khởi chạy backend (`mvn test`) và frontend (`npm run test`) nếu có để kiểm tra lỗi cú pháp/logic cơ bản.
+
+#### Manual Verification
+1. **Kiểm tra mật khẩu Plain Text:**
+   - Đăng nhập thử với `admin` / `admin123`, `student` / `student123`, `instructor` / `instructor123`.
+   - Kiểm tra trong database: Cột `password` của các tài khoản này phải là text thô, không phải hash `$2a$...`.
+2. **Kiểm tra Phân luồng Vai trò Giảng dạy của Instructor:**
+   - Đăng nhập tài khoản `instructor`: hệ thống tự động điều hướng vào `/admin/courses`.
+   - Kiểm tra trong sidebar chỉ thấy 3 menu: "Khóa học", "Tiến độ & Điểm số", "Hỏi đáp".
+   - Thực hiện Tạo khóa học, upload tệp video/tài liệu bài học mới, và thiết lập bộ câu hỏi Quiz -> Đảm bảo lưu thành công.
+   - Kiểm tra xem được tiến độ học tập và điểm số của học viên.
+   - Nhấp vào "Hỏi đáp" và trả lời một câu hỏi thảo luận -> Đảm bảo hiển thị tức thì trên bài học của học viên.
+3. **Kiểm tra vai trò Admin quản lý tập trung:**
+   - Đăng nhập tài khoản `admin`: có đầy đủ 5 menu.
+   - Truy cập "Người dùng" -> Kiểm tra tab "Học viên không hoạt động" và thử gửi mail nhắc nhở -> Kiểm tra Log backend để xem mail gửi giả lập thành công.
+4. **Kiểm tra vai trò Học viên:**
+   - Thử gửi một câu hỏi thảo luận ở cuối bài học. Đăng nhập với Instructor/Admin để xem câu hỏi đó có hiển thị để trả lời hay không. Đăng nhập lại Học viên để xem phản hồi của giáo viên.
+

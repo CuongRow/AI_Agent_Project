@@ -20,10 +20,11 @@ import AdminUsers from './pages/AdminUsers';
 import AdminCourses from './pages/AdminCourses';
 import Profile from './pages/Profile';
 import QuizHistory from './pages/QuizHistory';
-
+import AdminGrades from './pages/AdminGrades';
+import AdminDiscussions from './pages/AdminDiscussions';
 
 // Route Guards
-const ProtectedRoute = ({ children, allowedRole }) => {
+const ProtectedRoute = ({ children, allowedRoles }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
@@ -59,18 +60,16 @@ const ProtectedRoute = ({ children, allowedRole }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRole && user && user.roles) {
-    const hasRole = user.roles.includes(allowedRole);
+  if (allowedRoles && user && user.roles) {
+    const hasRole = allowedRoles.some(role => user.roles.includes(role));
     if (!hasRole) {
-      // If student trying to access admin
-      if (allowedRole === 'ROLE_ADMIN') {
-        return <Navigate to="/dashboard" replace />;
-      }
-      // If admin trying to access student
-      if (allowedRole === 'ROLE_STUDENT' && user.roles.includes('ROLE_ADMIN')) {
+      if (user.roles.includes('ROLE_ADMIN')) {
         return <Navigate to="/admin" replace />;
       }
-      return <Navigate to="/" replace />;
+      if (user.roles.includes('ROLE_INSTRUCTOR')) {
+        return <Navigate to="/admin/courses" replace />;
+      }
+      return <Navigate to="/dashboard" replace />;
     }
   }
 
@@ -86,6 +85,9 @@ const GuestRoute = ({ children }) => {
   if (isAuthenticated && user) {
     if (user.roles.includes('ROLE_ADMIN')) {
       return <Navigate to="/admin" replace />;
+    }
+    if (user.roles.includes('ROLE_INSTRUCTOR')) {
+      return <Navigate to="/admin/courses" replace />;
     }
     return <Navigate to="/dashboard" replace />;
   }
@@ -115,7 +117,7 @@ function App() {
 
           {/* Student Routes */}
           <Route path="/" element={
-            <ProtectedRoute allowedRole="ROLE_STUDENT">
+            <ProtectedRoute allowedRoles={['ROLE_STUDENT']}>
               <DashboardLayout />
             </ProtectedRoute>
           }>
@@ -123,20 +125,33 @@ function App() {
             <Route path="courses" element={<Courses />} />
             <Route path="courses/:courseId/lessons/:lessonId" element={<LessonDetail />} />
             <Route path="lessons/:lessonId/quizzes" element={<QuizDetail />} />
-            <Route path="bookmarks" element={<StudentDashboard />} /> {/* Fallback or identical bookmark display */}
+            <Route path="bookmarks" element={<StudentDashboard />} />
             <Route path="quiz-history" element={<QuizHistory />} />
             <Route path="profile" element={<Profile />} />
           </Route>
 
-          {/* Admin Routes */}
+          {/* Admin & Instructor Routes */}
           <Route path="/admin" element={
-            <ProtectedRoute allowedRole="ROLE_ADMIN">
+            <ProtectedRoute allowedRoles={['ROLE_ADMIN', 'ROLE_INSTRUCTOR']}>
               <AdminLayout />
             </ProtectedRoute>
           }>
-            <Route index element={<AdminDashboard />} />
-            <Route path="users" element={<AdminUsers />} />
+            {/* Admin-only Routes */}
+            <Route index element={
+              <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="users" element={
+              <ProtectedRoute allowedRoles={['ROLE_ADMIN']}>
+                <AdminUsers />
+              </ProtectedRoute>
+            } />
+
+            {/* Shared Admin & Instructor Routes */}
             <Route path="courses" element={<AdminCourses />} />
+            <Route path="grades" element={<AdminGrades />} />
+            <Route path="discussions" element={<AdminDiscussions />} />
             <Route path="profile" element={<Profile />} />
           </Route>
 

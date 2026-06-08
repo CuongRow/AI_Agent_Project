@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -27,8 +28,50 @@ public class UserService {
         return userMapper.toResponse(user);
     }
 
+
+    @Transactional
+    public UserResponse updateUserAvatar(Long userId, org.springframework.web.multipart.MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("File is empty!");
+        }
+        // Validate MIME type
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/png") && !contentType.equals("image/gif") && !contentType.equals("image/webp"))) {
+            throw new BadRequestException("Only JPEG, PNG, GIF, and WEBP images are allowed!");
+        }
+        // Find user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        try {
+            String originalFilename = file.getOriginalFilename();
+            String extension = (originalFilename != null && originalFilename.contains("."))
+                    ? originalFilename.substring(originalFilename.lastIndexOf('.'))
+                    : ".png";
+            String filename = userId + "_" + System.currentTimeMillis() + extension;
+            java.nio.file.Path uploadDir = java.nio.file.Paths.get("uploads/avatars");
+            if (!java.nio.file.Files.exists(uploadDir)) {
+                java.nio.file.Files.createDirectories(uploadDir);
+            }
+            // Delete old avatar if exists
+            if (user.getAvatarUrl() != null && user.getAvatarUrl().startsWith("/uploads/avatars/")) {
+                String oldFile = user.getAvatarUrl().substring(user.getAvatarUrl().lastIndexOf('/') + 1);
+                java.nio.file.Files.deleteIfExists(uploadDir.resolve(oldFile));
+            }
+            java.nio.file.Path target = uploadDir.resolve(filename);
+            java.nio.file.Files.copy(file.getInputStream(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            user.setAvatarUrl("/uploads/avatars/" + filename);
+            User saved = userRepository.save(user);
+            return userMapper.toResponse(saved);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to store file: " + e.getMessage(), e);
+        }
+    }
+
+    // Existing methods remain unchanged
+
     @Transactional
     public UserResponse updateUserProfile(Long userId, UpdateProfileRequest request) {
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 

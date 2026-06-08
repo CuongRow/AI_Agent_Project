@@ -13,6 +13,7 @@ import {
   XIcon,
   ChartBarIcon
 } from '../components/Icons';
+import ThemeToggleSwitch from '../components/ThemeToggleSwitch';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
@@ -22,13 +23,20 @@ const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    const applyTheme = () => {
+      const currentTheme = localStorage.getItem('theme') || 'dark';
+      setTheme(currentTheme);
+      if (currentTheme === 'dark') {
+        document.body.classList.add('dark');
+      } else {
+        document.body.classList.remove('dark');
+      }
+    };
+    
+    applyTheme();
+    window.addEventListener('theme-change', applyTheme);
+    return () => window.removeEventListener('theme-change', applyTheme);
+  }, []);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -65,9 +73,7 @@ const DashboardLayout = () => {
           <AcademicCapIcon size={24} />
           <span>JavaMastery</span>
         </Link>
-        <button onClick={toggleTheme} className="btn btn-outline" style={{ padding: '6px', border: 'none' }}>
-          {theme === 'light' ? <MoonIcon size={20} /> : <SunIcon size={20} />}
-        </button>
+        <ThemeToggleSwitch style={{ transform: 'scale(0.5)', transformOrigin: 'right center' }} />
       </header>
 
       {/* Sidebar Overlay (Mobile) */}
@@ -150,22 +156,10 @@ const DashboardLayout = () => {
         </nav>
 
         {/* Sidebar Footer */}
-        <div style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <button onClick={toggleTheme} className="btn btn-outline" style={{ display: 'flex', justifyContent: 'center', gap: '8px', width: '100%' }}>
-            {theme === 'light' ? (
-              <>
-                <MoonIcon size={18} />
-                <span>Giao diện tối</span>
-              </>
-            ) : (
-              <>
-                <SunIcon size={18} />
-                <span>Giao diện sáng</span>
-              </>
-            )}
-          </button>
+        <div style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+          <ThemeToggleSwitch />
 
-          <button onClick={logout} className="btn btn-outline" style={{ display: 'flex', justifyContent: 'center', gap: '8px', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+          <button onClick={logout} className="btn btn-outline" style={{ display: 'flex', justifyContent: 'center', gap: '8px', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)', width: '100%' }}>
             <LogOutIcon size={18} />
             <span>Đăng xuất</span>
           </button>
@@ -195,8 +189,6 @@ const DashboardLayout = () => {
           zIndex: 30
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Email: <strong>{user?.email}</strong></span>
-            <div style={{ height: '20px', width: '1px', backgroundColor: 'var(--border)' }}></div>
             <Link to="/profile" className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.85rem' }}>Hồ sơ</Link>
           </div>
         </header>

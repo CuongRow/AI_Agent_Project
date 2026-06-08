@@ -17,6 +17,24 @@ const AdminDashboard = () => {
     fetchAnalytics();
   }, []);
 
+  useEffect(() => {
+    if (!loading && !error && analytics?.userRegistrationsOverTime) {
+      const dates = Object.keys(analytics.userRegistrationsOverTime).sort();
+      const counts = dates.map(d => analytics.userRegistrationsOverTime[d]);
+      
+      if (dates.length > 0 && window.Highcharts) {
+        window.Highcharts.chart('registration-chart-container', {
+          chart: { type: 'column' },
+          title: { text: '' },
+          xAxis: { categories: dates },
+          yAxis: { title: { text: 'Số lượng' } },
+          series: [{ name: 'Người dùng mới', data: counts }],
+          credits: { enabled: false }
+        });
+      }
+    }
+  }, [loading, error, analytics]);
+
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
@@ -242,84 +260,7 @@ const AdminDashboard = () => {
               <p style={{ fontSize: '0.9rem' }}>Chưa có dữ liệu đăng ký.</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-              {/* SVG Bar Chart */}
-              <div style={{ width: '100%', overflowX: 'auto' }}>
-                <svg
-                  width="100%"
-                  viewBox={`0 0 ${Math.max(registrationEntries.length * 60, 300)} 200`}
-                  style={{ minWidth: '300px' }}
-                  preserveAspectRatio="xMidYEnd meet"
-                >
-                  {/* Y-axis gridlines */}
-                  {[0, 0.25, 0.5, 0.75, 1].map((frac, i) => {
-                    const y = 10 + (1 - frac) * 160;
-                    return (
-                      <g key={i}>
-                        <line x1="40" y1={y} x2={registrationEntries.length * 60 + 10} y2={y} stroke="var(--border)" strokeWidth="0.5" strokeDasharray="4 4" />
-                        <text x="36" y={y + 4} textAnchor="end" fill="var(--text-muted)" fontSize="10" fontFamily="var(--font-sans)">
-                          {Math.round(maxRegistrationValue * frac)}
-                        </text>
-                      </g>
-                    );
-                  })}
-
-                  {/* Bars */}
-                  {registrationEntries.map(([date, count], idx) => {
-                    const barWidth = 28;
-                    const barX = 50 + idx * 60;
-                    const barMaxHeight = 160;
-                    const barHeight = Math.max((count / maxRegistrationValue) * barMaxHeight, 4);
-                    const barY = 10 + barMaxHeight - barHeight;
-                    const gradientId = `barGrad_${idx}`;
-
-                    return (
-                      <g key={date}>
-                        <defs>
-                          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#3b82f6" />
-                            <stop offset="100%" stopColor="#7c3aed" />
-                          </linearGradient>
-                        </defs>
-                        <rect
-                          x={barX}
-                          y={barY}
-                          width={barWidth}
-                          height={barHeight}
-                          fill={`url(#${gradientId})`}
-                          rx="4"
-                          ry="4"
-                          style={{ transition: 'height 0.5s ease, y 0.5s ease' }}
-                        />
-                        {/* Value on top */}
-                        <text
-                          x={barX + barWidth / 2}
-                          y={barY - 6}
-                          textAnchor="middle"
-                          fill="var(--text-main)"
-                          fontSize="10"
-                          fontWeight="600"
-                          fontFamily="var(--font-sans)"
-                        >
-                          {count}
-                        </text>
-                        {/* Date label */}
-                        <text
-                          x={barX + barWidth / 2}
-                          y={185}
-                          textAnchor="middle"
-                          fill="var(--text-muted)"
-                          fontSize="9"
-                          fontFamily="var(--font-sans)"
-                        >
-                          {date.length > 7 ? date.slice(5) : date}
-                        </text>
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-            </div>
+            <div id="registration-chart-container" style={{ width: '100%', height: '300px' }}></div>
           )}
         </div>
       </div>

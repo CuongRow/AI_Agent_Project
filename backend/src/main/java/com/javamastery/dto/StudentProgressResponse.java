@@ -12,13 +12,14 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserResponse {
+public class StudentProgressResponse {
     private Long id;
     private String username;
     private String email;
-    private boolean enabled;
-    private List<String> roles;
-    private LocalDateTime createdAt;
     private LocalDateTime lastActiveAt;
+    private boolean enabled;
     private String avatarUrl;
+    private long completedLessonsCount;
+    private double averageQuizScore;
+    private List<QuizAttemptResponse> quizAttempts;
 }

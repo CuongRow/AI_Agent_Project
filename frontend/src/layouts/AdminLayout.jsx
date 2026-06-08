@@ -12,6 +12,7 @@ import {
   MenuIcon,
   XIcon
 } from '../components/Icons';
+import ThemeToggleSwitch from '../components/ThemeToggleSwitch';
 
 const AdminLayout = () => {
   const { user, logout } = useAuth();
@@ -21,28 +22,43 @@ const AdminLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    const applyTheme = () => {
+      const currentTheme = localStorage.getItem('theme') || 'dark';
+      setTheme(currentTheme);
+      if (currentTheme === 'dark') {
+        document.body.classList.add('dark');
+      } else {
+        document.body.classList.remove('dark');
+      }
+    };
+    
+    applyTheme();
+    window.addEventListener('theme-change', applyTheme);
+    return () => window.removeEventListener('theme-change', applyTheme);
+  }, []);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  const navLinks = [
-    { path: '/admin', label: 'Thống kê', icon: <ChartBarIcon size={20} /> },
-    { path: '/admin/users', label: 'Người dùng', icon: <UserIcon size={20} /> },
-    { path: '/admin/courses', label: 'Khóa học & Bài học', icon: <BookOpenIcon size={20} /> },
-  ];
+  const isAdmin = user?.roles?.includes('ROLE_ADMIN');
+  const isInstructor = user?.roles?.includes('ROLE_INSTRUCTOR');
+  
+  const navLinks = [];
+  if (isAdmin) {
+    navLinks.push({ path: '/admin', label: 'Thống kê', icon: <ChartBarIcon size={20} /> });
+    navLinks.push({ path: '/admin/users', label: 'Người dùng', icon: <UserIcon size={20} /> });
+  }
+  if (isAdmin || isInstructor) {
+    navLinks.push({ path: '/admin/courses', label: 'Khóa học & Bài học', icon: <BookOpenIcon size={20} /> });
+    navLinks.push({ path: '/admin/grades', label: 'Tiến độ & Điểm số', icon: <ChartBarIcon size={20} /> });
+    navLinks.push({ path: '/admin/discussions', label: 'Hỏi đáp', icon: <AcademicCapIcon size={20} /> });
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--background)', color: 'var(--text-main)' }}>
       {/* Mobile Header */}
-      <header className="glass" style={{
+      <header className="glass mobile-header-bar" style={{
         display: 'none',
         position: 'fixed',
         top: 0,
@@ -54,7 +70,7 @@ const AdminLayout = () => {
         justifyContent: 'space-between',
         borderBottom: '1px solid var(--border)',
         zIndex: 40,
-      }} className="mobile-header-bar">
+      }}>
         <button onClick={() => setIsSidebarOpen(true)} className="btn btn-outline" style={{ padding: '6px', border: 'none' }}>
           <MenuIcon size={24} />
         </button>
@@ -62,9 +78,7 @@ const AdminLayout = () => {
           <AcademicCapIcon size={24} />
           <span>JavaMastery (Admin)</span>
         </Link>
-        <button onClick={toggleTheme} className="btn btn-outline" style={{ padding: '6px', border: 'none' }}>
-          {theme === 'light' ? <MoonIcon size={20} /> : <SunIcon size={20} />}
-        </button>
+        <ThemeToggleSwitch style={{ transform: 'scale(0.5)', transformOrigin: 'right center' }} />
       </header>
 
       {/* Sidebar Overlay (Mobile) */}
@@ -112,14 +126,16 @@ const AdminLayout = () => {
         {/* User Info Quick Card */}
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--background)' }}>
           <p style={{ fontWeight: 600, fontSize: '0.95rem' }}>{user?.username}</p>
-          <p style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 600 }}>Quản trị viên</p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 600 }}>
+            {isAdmin ? 'Quản trị viên' : isInstructor ? 'Giảng viên' : 'Học viên'}
+          </p>
         </div>
 
         {/* Nav Links */}
         <nav style={{ flex: 1, padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {navLinks.map((link) => {
             const isActive = location.pathname === link.path || 
-              (link.path === '/admin/courses' && location.pathname.startsWith('/admin/courses'));
+              (link.path !== '/admin' && location.pathname.startsWith(link.path));
             return (
               <Link
                 key={link.path}
@@ -147,26 +163,11 @@ const AdminLayout = () => {
         </nav>
 
         {/* Sidebar Footer */}
-        <div style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <Link to="/dashboard" className="btn btn-outline" style={{ display: 'flex', justifyContent: 'center', gap: '8px', fontSize: '0.9rem' }}>
-            <span>Giao diện học viên</span>
-          </Link>
+        <div style={{ padding: '16px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
           
-          <button onClick={toggleTheme} className="btn btn-outline" style={{ display: 'flex', justifyContent: 'center', gap: '8px', width: '100%' }}>
-            {theme === 'light' ? (
-              <>
-                <MoonIcon size={18} />
-                <span>Giao diện tối</span>
-              </>
-            ) : (
-              <>
-                <SunIcon size={18} />
-                <span>Giao diện sáng</span>
-              </>
-            )}
-          </button>
+          <ThemeToggleSwitch />
 
-          <button onClick={logout} className="btn btn-outline" style={{ display: 'flex', justifyContent: 'center', gap: '8px', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+          <button onClick={logout} className="btn btn-outline" style={{ display: 'flex', justifyContent: 'center', gap: '8px', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)', width: '100%' }}>
             <LogOutIcon size={18} />
             <span>Đăng xuất</span>
           </button>
@@ -184,7 +185,7 @@ const AdminLayout = () => {
       }} className="responsive-content-container">
         
         {/* Desktop Header */}
-        <header className="glass" style={{
+        <header className="glass desktop-header-bar" style={{
           height: '64px',
           padding: '0 32px',
           display: 'flex',
@@ -194,12 +195,8 @@ const AdminLayout = () => {
           position: 'sticky',
           top: 0,
           zIndex: 30
-        }} className="desktop-header-bar">
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Email: <strong>{user?.email}</strong></span>
-            <div style={{ height: '20px', width: '1px', backgroundColor: 'var(--border)' }}></div>
-            <span style={{ fontSize: '0.85rem', padding: '4px 8px', borderRadius: '4px', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 600 }}>Quản trị hệ thống</span>
-            <div style={{ height: '20px', width: '1px', backgroundColor: 'var(--border)' }}></div>
             <Link to="/admin/profile" className="btn btn-outline" style={{ padding: '6px 12px', fontSize: '0.85rem', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>Hồ sơ</Link>
           </div>
         </header>

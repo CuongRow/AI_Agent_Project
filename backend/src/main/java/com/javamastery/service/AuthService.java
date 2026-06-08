@@ -5,6 +5,7 @@ import com.javamastery.entity.RefreshToken;
 import com.javamastery.entity.Role;
 import com.javamastery.entity.User;
 import com.javamastery.exception.BadRequestException;
+import com.javamastery.exception.ResourceNotFoundException;
 import com.javamastery.repository.RoleRepository;
 import com.javamastery.repository.UserRepository;
 import com.javamastery.security.JwtProvider;
@@ -46,7 +47,10 @@ public class AuthService {
         String accessToken = jwtProvider.generateToken(authentication);
 
         UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
-        User user = userPrincipal.getUser();
+        User user = userRepository.findById(userPrincipal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        user.setLastActiveAt(java.time.LocalDateTime.now());
+        userRepository.save(user);
 
         // Create refresh token
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
@@ -62,6 +66,7 @@ public class AuthService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .roles(roles)
+                .avatarUrl(user.getAvatarUrl())
                 .build();
     }
 
@@ -85,20 +90,13 @@ public class AuthService {
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
                 .roles(Set.of(studentRole))
                 .enabled(true)
+                .lastActiveAt(java.time.LocalDateTime.now())
                 .build();
 
         User savedUser = userRepository.save(user);
 
-        // Auto-login after registration
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        registerRequest.getUsername(),
-                        registerRequest.getPassword()
-                )
-        );
-
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String accessToken = jwtProvider.generateToken(authentication);
+        // Auto-login after registration (Generate tokens directly to avoid transaction lock error)
+        String accessToken = jwtProvider.generateTokenFromUsername(savedUser.getUsername());
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(savedUser.getId());
 
         List<String> roles = savedUser.getRoles().stream()
@@ -112,6 +110,7 @@ public class AuthService {
                 .username(savedUser.getUsername())
                 .email(savedUser.getEmail())
                 .roles(roles)
+                .avatarUrl(savedUser.getAvatarUrl())
                 .build();
     }
 
@@ -134,6 +133,7 @@ public class AuthService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .roles(roles)
+                .avatarUrl(user.getAvatarUrl())
                 .build();
     }
 

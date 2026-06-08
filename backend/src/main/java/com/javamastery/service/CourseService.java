@@ -33,6 +33,7 @@ public class CourseService {
 
     @Transactional
     public CourseResponse createCourse(CourseResponse request) {
+        validateDescription(request.getDescription());
         Course course = Course.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
@@ -44,6 +45,7 @@ public class CourseService {
 
     @Transactional
     public CourseResponse updateCourse(Long id, CourseResponse request) {
+        validateDescription(request.getDescription());
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found with id: " + id));
         course.setTitle(request.getTitle());
@@ -51,6 +53,12 @@ public class CourseService {
         course.setImageUrl(request.getImageUrl());
         Course saved = courseRepository.save(course);
         return courseMapper.toResponse(saved);
+    }
+
+    private void validateDescription(String description) {
+        if (description == null || description.trim().split("\\s+").length < 200) {
+            throw new com.javamastery.exception.BadRequestException("Course description must be at least 200 words.");
+        }
     }
 
     @Transactional

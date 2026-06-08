@@ -30,21 +30,20 @@ public class BookmarkService {
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new ResourceNotFoundException("Lesson not found with id: " + lessonId));
 
-        return bookmarkRepository.findByUserIdAndLessonId(userId, lessonId)
-                .map(existing -> {
-                    // Remove bookmark (toggle off)
-                    bookmarkRepository.delete(existing);
-                    return (BookmarkResponse) null;
-                })
-                .orElseGet(() -> {
-                    // Add bookmark (toggle on)
-                    Bookmark bookmark = Bookmark.builder()
-                            .user(user)
-                            .lesson(lesson)
-                            .build();
-                    Bookmark saved = bookmarkRepository.save(bookmark);
-                    return toResponse(saved);
-                });
+        java.util.Optional<Bookmark> existingOpt = bookmarkRepository.findByUserIdAndLessonId(userId, lessonId);
+        if (existingOpt.isPresent()) {
+            // Remove bookmark (toggle off)
+            bookmarkRepository.delete(existingOpt.get());
+            return null;
+        } else {
+            // Add bookmark (toggle on)
+            Bookmark bookmark = Bookmark.builder()
+                    .user(user)
+                    .lesson(lesson)
+                    .build();
+            Bookmark saved = bookmarkRepository.save(bookmark);
+            return toResponse(saved);
+        }
     }
 
     @Transactional(readOnly = true)

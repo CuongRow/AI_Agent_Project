@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../services/api';
-import {
-  ChartBarIcon,
-  UserIcon,
-  BookOpenIcon,
-  AcademicCapIcon,
-  CheckIcon,
-} from '../components/Icons';
+import { ChartBarIcon, UserIcon, BookOpenIcon, AcademicCapIcon, CheckIcon } from '../components/Icons';
 
+/**
+ * Admin Dashboard – glassmorphism design matching Dashboard.png template.
+ * Uses TailwindCSS for styling, GlassCard for reusable cards, and Chart.js for charts.
+ */
 const AdminDashboard = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,23 +16,42 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading && !error && analytics?.userRegistrationsOverTime) {
-      const dates = Object.keys(analytics.userRegistrationsOverTime).sort();
-      const counts = dates.map(d => analytics.userRegistrationsOverTime[d]);
-      
+    if (!loading && !error && analytics) {
+      const entries = analytics.userRegistrationsOverTime
+        ? Object.entries(analytics.userRegistrationsOverTime).sort(([a], [b]) =>
+          a.localeCompare(b)
+        )
+        : [];
+
+      const dates = entries.map(([date]) => date);
+      const counts = entries.map(([, count]) => count);
+
       if (dates.length > 0 && window.Highcharts) {
         window.Highcharts.chart('registration-chart-container', {
-          chart: { type: 'column' },
+          chart: {
+            type: 'column',
+            backgroundColor: 'transparent',
+          },
           title: { text: '' },
-          xAxis: { categories: dates },
-          yAxis: { title: { text: 'Số lượng' } },
-          series: [{ name: 'Người dùng mới', data: counts }],
-          credits: { enabled: false }
+          xAxis: {
+            categories: dates,
+          },
+          yAxis: {
+            title: { text: 'Số lượng' },
+          },
+          series: [
+            {
+              name: 'Người dùng mới',
+              data: counts,
+            },
+          ],
+          credits: {
+            enabled: false,
+          },
         });
       }
     }
   }, [loading, error, analytics]);
-
   const fetchAnalytics = async () => {
     try {
       setLoading(true);

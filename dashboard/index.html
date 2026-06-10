@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lo Financial - Admin Dashboard</title>
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Custom Tailwind config -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            limeTheme: '#a3e635',
+            darkBg: '#0b0c0f',
+            glassWhite: 'rgba(255, 255, 255, 0.02)',
+            glassBorder: 'rgba(255, 255, 255, 0.06)'
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="style.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-darkBg min-h-screen relative text-slate-100 flex">
+  
+  <!-- Glow Bubble Effects -->
+  <div class="glow-container">
+    <div class="glow-bubble glow-bubble-1"></div>
+    <div class="glow-bubble glow-bubble-2"></div>
+    <div class="glow-bubble glow-bubble-3"></div>
+  </div>
+
+  <!-- Sidebar Container -->
+  <aside id="sidebar-container" class="fixed top-0 bottom-0 left-0 w-20 z-50 bg-[#131419]/60 backdrop-blur-xl border-r border-white/[0.06] flex flex-col items-center py-6 transition-transform duration-300 md:translate-x-0 -translate-x-full">
+    <!-- Close Menu button for mobile -->
+    <button id="close-menu-btn" class="md:hidden absolute top-4 right-4 text-slate-400 hover:text-white">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+
+    <!-- Logo on top -->
+    <div class="mb-10 flex items-center justify-center">
+      <div class="w-12 h-12 rounded-full bg-limeTheme/10 border border-limeTheme/30 flex items-center justify-center relative cursor-pointer group">
+        <div class="absolute inset-0 bg-limeTheme/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <!-- Logo Icon: Two green spheres / half-spheres -->
+        <span class="font-display font-black text-limeTheme text-xl relative z-10">Lo</span>
+      </div>
+    </div>
+
+    <!-- Navigation Items -->
+    <nav class="flex-1 flex flex-col gap-6 w-full px-2">
+      <a href="#" class="sidebar-item active w-12 h-12 mx-auto rounded-2xl flex items-center justify-center">
+        <!-- Dashboard / Grid icon -->
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+      </a>
+
+      <a href="#" class="sidebar-item w-12 h-12 mx-auto rounded-2xl flex items-center justify-center">
+        <!-- Folders icon -->
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+        </svg>
+      </a>
+
+      <a href="#" class="sidebar-item w-12 h-12 mx-auto rounded-2xl flex items-center justify-center">
+        <!-- Files check list -->
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </a>
+
+      <a href="#" class="sidebar-item w-12 h-12 mx-auto rounded-2xl flex items-center justify-center">
+        <!-- Add list item icon -->
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </a>
+
+      <a href="#" class="sidebar-item w-12 h-12 mx-auto rounded-2xl flex items-center justify-center">
+        <!-- Documents / copy icon -->
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+        </svg>
+      </a>
+
+      <a href="#" class="sidebar-item w-12 h-12 mx-auto rounded-2xl flex items-center justify-center">
+        <!-- Heart / Saved icon -->
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+      </a>
+
+      <a href="#" class="sidebar-item w-12 h-12 mx-auto rounded-2xl flex items-center justify-center">
+        <!-- Mail / Inbox icon -->
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0L12 14l-8-5" />
+        </svg>
+      </a>
+    </nav>
+
+    <!-- Sidebar footer setting -->
+    <div class="mt-auto">
+      <a href="#" class="sidebar-item w-12 h-12 rounded-2xl flex items-center justify-center">
+        <!-- Cog/Setting icon -->
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="flex-1 md:ml-20 flex flex-col min-h-screen p-6 md:p-10 min-w-0">
+    
+    <!-- Navbar / Header bar -->
+    <header class="flex justify-between items-center mb-10 w-full">
+      
+      <!-- Mobile hamburger Menu Trigger -->
+      <button id="mobile-menu-btn" class="md:hidden p-2 text-slate-300 hover:text-white border border-white/[0.08] rounded-xl bg-white/[0.02] backdrop-blur-md">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+
+      <!-- Dashboard title block -->
+      <div class="flex items-center gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-3xl font-extrabold tracking-tight">Dashboard</h1>
+            <button id="refresh-btn" class="p-1.5 text-slate-400 hover:text-white transition-colors duration-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            </button>
+          </div>
+          <!-- Dropdown Financial -->
+          <div class="relative inline-flex items-center gap-1 text-xs text-slate-400 hover:text-white cursor-pointer select-none mt-1 group">
+            <span>Financial</span>
+            <svg class="w-3 h-3 group-hover:translate-y-0.5 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action items (Search, Profile, etc.) -->
+      <div class="flex items-center gap-4">
+        <!-- Search icon -->
+        <button class="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.06] backdrop-blur-md transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
+
+        <!-- Notification bell icon -->
+        <button class="w-10 h-10 rounded-full flex items-center justify-center text-slate-400 hover:text-white border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.06] backdrop-blur-md transition-colors relative">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <!-- Red dot -->
+          <span class="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-limeTheme"></span>
+        </button>
+
+        <!-- Profile avatar -->
+        <div class="w-10 h-10 rounded-full overflow-hidden border border-white/[0.12] shadow-md hover:border-limeTheme transition-colors duration-200 cursor-pointer">
+          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150" alt="Avatar User" class="w-full h-full object-cover">
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Sections -->
+    <main class="flex-1 flex flex-col min-w-0">
+      
+      <!-- BILLS SECTION -->
+      <section class="mb-10">
+        <h2 class="text-2xl font-bold tracking-tight mb-6">Bills</h2>
+
+        <!-- Bills Grid: 4 glass cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          
+          <!-- Card 1: Purple themed -->
+          <div class="glass-card card-glow-purple p-6 rounded-[28px] h-48">
+            <div class="card-content-wrap">
+              <!-- Top Row -->
+              <div class="flex justify-between items-start">
+                <!-- Icon box -->
+                <div class="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <!-- Mini Circular Indicator -->
+                <div class="relative w-12 h-12 flex items-center justify-center">
+                  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="2.5"></circle>
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="100" stroke-dashoffset="58" stroke-linecap="round" class="text-violet-400"></circle>
+                  </svg>
+                  <span class="absolute text-[9px] font-bold text-slate-100">+42%</span>
+                </div>
+              </div>
+              <!-- Text detail -->
+              <div class="mt-4">
+                <p class="text-xs text-slate-400 font-medium">Ready to assign</p>
+                <h3 class="text-2xl font-black tracking-tight mt-1">200 <span class="text-slate-400 font-medium text-lg">-</span> 42</h3>
+                <p class="text-[10px] text-slate-500 mt-1">Bill in this week 221</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 2: Green themed -->
+          <div class="glass-card card-glow-green p-6 rounded-[28px] h-48">
+            <div class="card-content-wrap">
+              <!-- Top Row -->
+              <div class="flex justify-between items-start">
+                <!-- Icon box -->
+                <div class="w-12 h-12 rounded-2xl bg-limeTheme/10 border border-limeTheme/20 flex items-center justify-center text-limeTheme">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <!-- Mini Circular Indicator -->
+                <div class="relative w-12 h-12 flex items-center justify-center">
+                  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="2.5"></circle>
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="100" stroke-dashoffset="58" stroke-linecap="round" class="text-limeTheme"></circle>
+                  </svg>
+                  <span class="absolute text-[9px] font-bold text-slate-100">+42%</span>
+                </div>
+              </div>
+              <!-- Text detail -->
+              <div class="mt-4">
+                <p class="text-xs text-slate-400 font-medium">Ready to assign</p>
+                <h3 class="text-2xl font-black tracking-tight mt-1">200 <span class="text-slate-400 font-medium text-lg">-</span> 42</h3>
+                <p class="text-[10px] text-slate-500 mt-1">Bill in this week 221</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Amber themed -->
+          <div class="glass-card card-glow-amber p-6 rounded-[28px] h-48">
+            <div class="card-content-wrap">
+              <!-- Top Row -->
+              <div class="flex justify-between items-start">
+                <!-- Icon box -->
+                <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <!-- Mini Circular Indicator -->
+                <div class="relative w-12 h-12 flex items-center justify-center">
+                  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="2.5"></circle>
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="100" stroke-dashoffset="58" stroke-linecap="round" class="text-amber-400"></circle>
+                  </svg>
+                  <span class="absolute text-[9px] font-bold text-slate-100">+42%</span>
+                </div>
+              </div>
+              <!-- Text detail -->
+              <div class="mt-4">
+                <p class="text-xs text-slate-400 font-medium">Ready to assign</p>
+                <h3 class="text-2xl font-black tracking-tight mt-1">200 <span class="text-slate-400 font-medium text-lg">-</span> 42</h3>
+                <p class="text-[10px] text-slate-500 mt-1">Bill in this week 221</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 4: Teal themed -->
+          <div class="glass-card card-glow-teal p-6 rounded-[28px] h-48">
+            <div class="card-content-wrap">
+              <!-- Top Row -->
+              <div class="flex justify-between items-start">
+                <!-- Icon box -->
+                <div class="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <!-- Mini Circular Indicator -->
+                <div class="relative w-12 h-12 flex items-center justify-center">
+                  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="2.5"></circle>
+                    <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="100" stroke-dashoffset="58" stroke-linecap="round" class="text-teal-400"></circle>
+                  </svg>
+                  <span class="absolute text-[9px] font-bold text-slate-100">+42%</span>
+                </div>
+              </div>
+              <!-- Text detail -->
+              <div class="mt-4">
+                <p class="text-xs text-slate-400 font-medium">Ready to assign</p>
+                <h3 class="text-2xl font-black tracking-tight mt-1">200 <span class="text-slate-400 font-medium text-lg">-</span> 42</h3>
+                <p class="text-[10px] text-slate-500 mt-1">Bill in this week 221</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- INVOICE SECTION -->
+      <section class="mb-10">
+        <h2 class="text-2xl font-bold tracking-tight mb-6">Invoice</h2>
+
+        <!-- Invoice Grid layout: Gauge | Small Cards Stack | Big Bar Chart -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          
+          <!-- Column 1: circular progress gauge card (4 cols) -->
+          <div class="glass-card card-glow-green p-6 rounded-[28px] lg:col-span-4 flex flex-col justify-between min-h-[360px] relative">
+            <!-- Triple dot button -->
+            <button class="absolute top-5 right-5 text-slate-400 hover:text-white p-1">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+              </svg>
+            </button>
+
+            <!-- Gauge section wrapper -->
+            <div class="flex-1 flex flex-col items-center justify-center pt-4">
+              <!-- Semicircular SVG Gauge -->
+              <div class="relative w-48 h-28 flex items-center justify-center overflow-hidden">
+                <svg class="absolute top-0 w-full h-full transform" viewBox="0 0 200 120">
+                  <!-- Grey Background Path -->
+                  <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="rgba(255, 255, 255, 0.04)" stroke-width="12" stroke-linecap="round" />
+                  <!-- Colorful active arc (circumference is ~251.3. For 45% offset is 138.2) -->
+                  <path id="gauge-fill" d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="url(#gauge-gradient)" stroke-width="12" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="251.3" class="gauge-progress" />
+                  <!-- Gradient definition -->
+                  <defs>
+                    <linearGradient id="gauge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#bbf238" />
+                      <stop offset="100%" stop-color="#84cc16" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <!-- Gauge center text -->
+                <div class="absolute bottom-4 flex flex-col items-center">
+                  <span class="text-3xl font-extrabold font-display leading-none text-white">45%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Amount Owed Card -->
+            <div class="sub-glass p-4 text-center mt-4">
+              <!-- Swap icon -->
+              <div class="w-8 h-8 mx-auto bg-limeTheme/10 border border-limeTheme/20 text-limeTheme rounded-xl flex items-center justify-center mb-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </div>
+              <p class="text-xs text-slate-400 font-medium">Amount Owed</p>
+              <h4 class="text-2xl font-black tracking-tight mt-1 text-white">$933,879.45</h4>
+              <p class="text-[10px] text-slate-500 mt-1">$126,783.89</p>
+            </div>
+          </div>
+
+          <!-- Column 2: Stack of 2 small cards (3 cols) -->
+          <div class="lg:col-span-3 flex flex-col gap-6 justify-between">
+            
+            <!-- Stack Card 1 (Purple themed) -->
+            <div class="glass-card card-glow-purple p-6 rounded-[28px] flex-1 flex flex-col justify-between">
+              <div class="card-content-wrap">
+                <div class="flex justify-between items-start">
+                  <div class="w-12 h-12 rounded-2xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <!-- Mini Circular Progress -->
+                  <div class="relative w-12 h-12 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                      <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="2.5"></circle>
+                      <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="100" stroke-dashoffset="58" stroke-linecap="round" class="text-violet-400"></circle>
+                    </svg>
+                    <span class="absolute text-[9px] font-bold text-slate-100">+42%</span>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <p class="text-xs text-slate-400 font-medium">Ready to assign</p>
+                  <h3 class="text-2xl font-black tracking-tight mt-1">200 <span class="text-slate-400 font-medium text-lg">-</span> 42</h3>
+                  <p class="text-[10px] text-slate-500 mt-1">Bill in this week 221</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stack Card 2 (Green themed) -->
+            <div class="glass-card card-glow-green p-6 rounded-[28px] flex-1 flex flex-col justify-between">
+              <div class="card-content-wrap">
+                <div class="flex justify-between items-start">
+                  <div class="w-12 h-12 rounded-2xl bg-limeTheme/10 border border-limeTheme/20 flex items-center justify-center text-limeTheme">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <!-- Mini Circular Progress -->
+                  <div class="relative w-12 h-12 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                      <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(255, 255, 255, 0.05)" stroke-width="2.5"></circle>
+                      <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="100" stroke-dashoffset="58" stroke-linecap="round" class="text-limeTheme"></circle>
+                    </svg>
+                    <span class="absolute text-[9px] font-bold text-slate-100">+42%</span>
+                  </div>
+                </div>
+                <div class="mt-4">
+                  <p class="text-xs text-slate-400 font-medium">Ready to assign</p>
+                  <h3 class="text-2xl font-black tracking-tight mt-1">200 <span class="text-slate-400 font-medium text-lg">-</span> 42</h3>
+                  <p class="text-[10px] text-slate-500 mt-1">Bill in this week 221</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Column 3: Large Bar Chart container (5 cols) -->
+          <div class="glass-card card-glow-teal p-6 rounded-[28px] lg:col-span-5 flex flex-col justify-between min-h-[360px] relative">
+            <div class="mb-4">
+              <h3 class="text-lg font-bold text-white tracking-tight">Monthly Statistics</h3>
+              <p class="text-xs text-slate-400">Total metrics from March to August</p>
+            </div>
+
+            <!-- Canvas for Chart.js Bar Chart -->
+            <div class="flex-1 relative min-h-[200px] mt-4">
+              <canvas id="monthly-chart"></canvas>
+              
+              <!-- Custom August Tooltip floating overlay matching Figma style -->
+              <!-- Placed exactly above August bar position (last column) -->
+              <div class="absolute bg-white text-slate-900 font-bold px-4 py-2 rounded-xl shadow-2xl flex items-center justify-center pointer-events-none" 
+                   style="top: 18%; right: 4%; transform: translateX(10%); animation: fadeInUp 0.4s ease forwards;">
+                <span class="text-xs tracking-tight">August 2021</span>
+                <!-- Downward arrow tip pointer -->
+                <div class="absolute w-2.5 h-2.5 bg-white rotate-45 left-[62%] -bottom-1.5 shadow-md"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer Copyright -->
+    <footer class="mt-auto pt-10 border-t border-white/[0.04] text-center text-xs text-slate-500">
+      <p>&copy; 2026 Lo Financial. Designed with Glassmorphism.</p>
+    </footer>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

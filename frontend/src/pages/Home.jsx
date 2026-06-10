@@ -34,12 +34,15 @@ const Home = () => {
     <div style={{ paddingBottom: '80px' }}>
       {/* Hero Section */}
       <section style={{
-        padding: '100px 24px 80px 24px',
-        background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(20, 184, 166, 0.05) 100%)',
+        padding: '120px 24px 100px 24px',
+        backgroundImage: 'linear-gradient(to bottom, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.9)), url(/sean-fahrenbruch-kxL6jPPNEWc-unsplash.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
         textAlign: 'center',
         borderBottom: '1px solid var(--border)',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        color: '#ffffff'
       }}>
         {/* Glow Effects */}
         <div style={{

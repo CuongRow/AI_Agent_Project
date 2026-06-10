@@ -21,12 +21,18 @@ const LessonDetail = () => {
   const [lessonLoading, setLessonLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [discussions, setDiscussions] = useState([]);
+  const [discussionsLoading, setDiscussionsLoading] = useState(true);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+
   useEffect(() => {
     fetchCourseAndLessons();
   }, [courseId]);
 
   useEffect(() => {
     fetchLessonDetails();
+    fetchDiscussions();
   }, [lessonId]);
 
   const fetchCourseAndLessons = async () => {
@@ -57,6 +63,36 @@ const LessonDetail = () => {
       setError('Không thể tải nội dung bài học.');
     } finally {
       setLessonLoading(false);
+    }
+  };
+
+  const fetchDiscussions = async () => {
+    try {
+      setDiscussionsLoading(true);
+      const response = await api.get(`/api/lessons/${lessonId}/discussions`);
+      setDiscussions(response.data || []);
+    } catch (err) {
+      console.error('Lỗi khi tải thảo luận:', err);
+    } finally {
+      setDiscussionsLoading(false);
+    }
+  };
+
+  const handlePostComment = async (e) => {
+    e.preventDefault();
+    if (!newCommentText.trim()) return;
+    try {
+      setSubmittingComment(true);
+      const response = await api.post(`/api/lessons/${lessonId}/discussions`, {
+        content: newCommentText.trim()
+      });
+      setDiscussions(prev => [response.data, ...prev]);
+      setNewCommentText('');
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || err.message || 'Không thể đăng bình luận.');
+    } finally {
+      setSubmittingComment(false);
     }
   };
 
@@ -298,6 +334,146 @@ const LessonDetail = () => {
               <article className="markdown-body">
                 <ReactMarkdown>{currentLesson.content}</ReactMarkdown>
               </article>
+
+              {/* Discussions Q&A Section */}
+              <div style={{ marginTop: '48px', borderTop: '1px solid var(--border)', paddingTop: '32px' }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: '20px' }}>
+                  Hỏi đáp & Thảo luận
+                </h3>
+                
+                {/* Form to submit a comment */}
+                <form onSubmit={handlePostComment} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+                  <textarea
+                    rows={3}
+                    className="form-input"
+                    placeholder="Bạn có thắc mắc gì về bài học này? Hãy đặt câu hỏi tại đây..."
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    disabled={submittingComment}
+                    style={{ resize: 'vertical', borderRadius: 'var(--radius-md)', padding: '12px 16px', border: '1px solid var(--border)' }}
+                    required
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={submittingComment || !newCommentText.trim()}
+                    style={{ alignSelf: 'flex-start', padding: '10px 20px', fontWeight: 600 }}
+                  >
+                    {submittingComment ? 'Đang gửi...' : 'Gửi câu hỏi'}
+                  </button>
+                </form>
+
+                {/* Discussions List */}
+                {discussionsLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--radius-md)' }} />
+                    <div className="skeleton" style={{ height: '80px', borderRadius: 'var(--radius-md)' }} />
+                  </div>
+                ) : discussions.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                    Chưa có thảo luận nào cho bài học này. Hãy là người đầu tiên đặt câu hỏi!
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    {discussions.map((disc) => {
+                      const initials = disc.username ? disc.username.charAt(0).toUpperCase() : '?';
+                      return (
+                        <div key={disc.id} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            {disc.userAvatarUrl ? (
+                              <img src={disc.userAvatarUrl} alt={disc.username} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : (
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+                                color: '#ffffff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                fontSize: '0.8rem'
+                              }}>
+                                {initials}
+                              </div>
+                            )}
+                            <div>
+                              <h5 style={{ fontSize: '0.85rem', fontWeight: 700 }}>{disc.username}</h5>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(disc.createdAt).toLocaleString('vi-VN')}</span>
+                            </div>
+                          </div>
+
+                          <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', paddingLeft: '42px', lineHeight: 1.5 }}>
+                            {disc.content}
+                          </div>
+
+                          {/* Nested Instructor Replies */}
+                          {disc.replies && disc.replies.length > 0 && (
+                            <div style={{ paddingLeft: '42px', marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              {disc.replies.map((reply) => {
+                                const repInitials = reply.username ? reply.username.charAt(0).toUpperCase() : '?';
+                                return (
+                                  <div key={reply.id} style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '6px',
+                                    backgroundColor: 'var(--surface-hover)',
+                                    padding: '12px',
+                                    borderRadius: 'var(--radius-md)',
+                                    borderLeft: '3px solid var(--success)'
+                                  }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      {reply.userAvatarUrl ? (
+                                        <img src={reply.userAvatarUrl} alt={reply.username} style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
+                                      ) : (
+                                        <div style={{
+                                          width: '24px',
+                                          height: '24px',
+                                          borderRadius: '50%',
+                                          background: 'linear-gradient(135deg, var(--success) 0%, var(--secondary) 100%)',
+                                          color: '#ffffff',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          fontWeight: 700,
+                                          fontSize: '0.7rem'
+                                        }}>
+                                          {repInitials}
+                                        </div>
+                                      )}
+                                      <div>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>
+                                          {reply.username}
+                                          <span style={{
+                                            fontSize: '0.62rem',
+                                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                                            color: 'var(--success)',
+                                            padding: '1px 6px',
+                                            borderRadius: '8px',
+                                            marginLeft: '6px',
+                                            fontWeight: 600
+                                          }}>Giảng viên</span>
+                                        </span>
+                                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                                          {new Date(reply.createdAt).toLocaleString('vi-VN')}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <p style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.4, paddingLeft: '32px' }}>
+                                      {reply.content}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Bottom sticky navigation and Quiz launcher */}

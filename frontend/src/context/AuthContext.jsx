@@ -46,9 +46,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (usernameOrEmail, password) => {
     try {
       const response = await api.post('/api/auth/login', { usernameOrEmail, password });
-      const { token: accessToken, refreshToken, id, username, email, roles } = response.data;
+      const { token: accessToken, refreshToken, id, username, email, roles, avatarUrl } = response.data;
       
-      const userData = { id, username, email, roles };
+      const userData = { id, username, email, roles, avatarUrl };
       
       localStorage.setItem('token', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
@@ -67,9 +67,9 @@ export const AuthProvider = ({ children }) => {
   const register = async (username, email, password) => {
     try {
       const response = await api.post('/api/auth/register', { username, email, password });
-      const { token: accessToken, refreshToken, id, username: registeredUsername, email: registeredEmail, roles } = response.data;
+      const { token: accessToken, refreshToken, id, username: registeredUsername, email: registeredEmail, roles, avatarUrl } = response.data;
       
-      const userData = { id, username: registeredUsername, email: registeredEmail, roles };
+      const userData = { id, username: registeredUsername, email: registeredEmail, roles, avatarUrl };
       
       localStorage.setItem('token', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
@@ -103,12 +103,20 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = (updatedUserData) => {
+    setUser(prev => {
+      const nextUser = { ...prev, ...updatedUserData };
+      localStorage.setItem('user', JSON.stringify(nextUser));
+      return nextUser;
+    });
+  };
+
   const hasRole = (roleName) => {
     return user && user.roles && user.roles.includes(roleName);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isAuthenticated, loading, login, register, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, token, isAuthenticated, loading, login, register, logout, hasRole, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

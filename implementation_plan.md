@@ -826,4 +826,407 @@ Instructor có các quyền và chức năng tương đương một giáo viên:
    - Truy cập "Người dùng" -> Kiểm tra tab "Học viên không hoạt động" và thử gửi mail nhắc nhở -> Kiểm tra Log backend để xem mail gửi giả lập thành công.
 4. **Kiểm tra vai trò Học viên:**
    - Thử gửi một câu hỏi thảo luận ở cuối bài học. Đăng nhập với Instructor/Admin để xem câu hỏi đó có hiển thị để trả lời hay không. Đăng nhập lại Học viên để xem phản hồi của giáo viên.
+   # Bổ Sung Thiết Kế UI/UX: Glassmorphism Dashboard System (Figma Integration)
+
+## Mục Tiêu
+
+Tích hợp bộ giao diện Dashboard Glassmorphism từ Figma vào hệ thống JavaMastery nhằm:
+
+* Tăng trải nghiệm người dùng hiện đại.
+* Đồng nhất Design System toàn hệ thống.
+* Hỗ trợ Dark Mode chuyên nghiệp.
+* Tạo giao diện học tập trực quan tương tự các nền tảng SaaS hiện đại.
+
+Nguồn thiết kế tham khảo:
+https://www.figma.com/design/hRCChPXJQ44JEFA2q8vF7h/Dashboard-Glassmorphism--Community-?node-id=2-3&m=dev&t=Vvny3mGlxsOjKvlj-1
+
+---
+
+# Design Language
+
+Hệ thống frontend sẽ áp dụng phong cách:
+
+* Glassmorphism
+* Soft Shadow
+* Blur Background
+* Gradient Lighting
+* Rounded UI
+* Dark Dashboard Theme
+* Neon Accent
+
+## Các đặc điểm giao diện
+
+### Glass Effect
+
+```css
+background: rgba(255,255,255,0.08);
+backdrop-filter: blur(20px);
+border: 1px solid rgba(255,255,255,0.1);
+```
+
+### Border Radius
+
+* Card: `24px`
+* Button: `16px`
+* Input: `14px`
+
+### Typography
+
+* Font chính: `Inter`
+* Dashboard Heading:
+
+  * Font weight: `700`
+  * Letter spacing nhẹ
+  * Màu trắng hoặc gradient text
+
+### Màu sắc chủ đạo
+
+| Thành phần  | Màu                      |
+| ----------- | ------------------------ |
+| Background  | `#0F172A`                |
+| Primary     | `#2563EB`                |
+| Secondary   | `#14B8A6`                |
+| Glass White | `rgba(255,255,255,0.08)` |
+| Border      | `rgba(255,255,255,0.12)` |
+
+---
+
+# Frontend UI Architecture
+
+## Component Structure
+
+```text
+frontend/src/
+├── components/
+│   ├── ui/
+│   │   ├── GlassCard.jsx
+│   │   ├── GlassButton.jsx
+│   │   ├── GlassInput.jsx
+│   │   ├── GradientHeading.jsx
+│   │   ├── Sidebar.jsx
+│   │   ├── Topbar.jsx
+│   │   ├── ProgressCard.jsx
+│   │   ├── AnalyticsCard.jsx
+│   │   ├── QuizResultCard.jsx
+│   │   └── UserAvatar.jsx
+│
+│   ├── charts/
+│   │   ├── ProgressChart.jsx
+│   │   ├── ActivityChart.jsx
+│   │   └── QuizStatisticsChart.jsx
+│
+│   └── layouts/
+│       ├── DashboardLayout.jsx
+│       ├── AdminLayout.jsx
+│       └── PublicLayout.jsx
+```
+
+---
+
+# Responsive Design Strategy
+
+## Breakpoints
+
+| Device  | Width            |
+| ------- | ---------------- |
+| Mobile  | `< 640px`        |
+| Tablet  | `640px - 1024px` |
+| Desktop | `> 1024px`       |
+
+## Responsive Rules
+
+### Mobile
+
+* Sidebar collapse thành Drawer/Hamburger.
+* Grid dashboard chuyển thành 1 cột.
+* Analytics cards stack dọc.
+
+### Tablet
+
+* Grid 2 cột.
+* Sidebar thu gọn icon-only.
+
+### Desktop
+
+* Full dashboard layout.
+* Sidebar cố định.
+* Multi-column analytics.
+
+---
+
+# Tailwind CSS Strategy
+
+## Tailwind Utilities được ưu tiên
+
+### Glass Card
+
+```html
+class="
+bg-white/10
+backdrop-blur-xl
+border border-white/10
+rounded-3xl
+shadow-2xl
+"
+```
+
+### Gradient Background
+
+```html
+class="
+bg-gradient-to-br
+from-slate-900
+via-slate-800
+to-slate-950
+"
+```
+
+### Dashboard Container
+
+```html
+class="
+min-h-screen
+text-white
+p-6
+"
+```
+
+---
+
+# React Component Strategy
+
+## Reusable Components
+
+### GlassCard.jsx
+
+Card wrapper dùng cho:
+
+* Analytics
+* Course info
+* Quiz result
+* Charts
+* Profile section
+
+### GlassButton.jsx
+
+Các variant:
+
+* Primary
+* Secondary
+* Danger
+* Ghost
+
+### AnalyticsCard.jsx
+
+Hiển thị:
+
+* số lượng học viên
+* số khóa học
+* quiz completed
+* completion rate
+
+### Sidebar.jsx
+
+* Role-based menu rendering.
+* Collapse animation.
+* Dark mode support.
+
+---
+
+# Animation & Motion
+
+Sử dụng:
+
+* Framer Motion
+* CSS Transition
+* Tailwind Animate
+
+## Animation Rules
+
+* Hover scale nhẹ (`scale-105`)
+* Smooth opacity transition
+* Glass glow effect
+* Sidebar slide animation
+* Modal fade-in
+
+---
+
+# Dark Mode System
+
+## Global Theme
+
+Theme được quản lý qua:
+
+* Context API
+* CSS Variables
+* Tailwind dark class
+
+## Theme Features
+
+* Real-time switching.
+* Persist vào LocalStorage.
+* Dispatch custom event:
+
+```js
+window.dispatchEvent(new Event('theme-change'))
+```
+
+---
+
+# Figma-to-Code Workflow
+
+## Quy trình chuẩn
+
+### Step 1 — Analyze Layout
+
+* Xác định grid.
+* Xác định spacing.
+* Xác định typography hierarchy.
+
+### Step 2 — Extract Design Tokens
+
+* màu sắc
+* border radius
+* blur intensity
+* spacing scale
+
+### Step 3 — Build Reusable Components
+
+Không copy pixel-by-pixel từ Figma.
+
+Ưu tiên:
+
+* reusable
+* responsive
+* maintainable
+
+### Step 4 — Integrate with React
+
+Convert thành:
+
+* JSX
+* Tailwind
+* reusable props
+
+---
+
+# Development Rules
+
+## Không sử dụng absolute positioning quá mức
+
+Chỉ dùng khi:
+
+* floating icon
+* notification badge
+* glow effect
+
+## Ưu tiên:
+
+* Flexbox
+* CSS Grid
+* Responsive spacing
+
+## Không hardcode width cố định
+
+Ưu tiên:
+
+```html
+w-full
+max-w-md
+grid-cols-responsive
+```
+
+---
+
+# Agent Development Instructions
+
+Khi AI Agent generate code:
+
+## Bắt buộc:
+
+* React functional components
+* Tailwind CSS
+* Responsive
+* Reusable props
+* Accessible HTML
+* Clean component separation
+
+## Không được:
+
+* inline style quá nhiều
+* nested div dư thừa
+* fixed height không cần thiết
+* hardcode pixel layout từ Figma
+
+---
+
+# Future UI Enhancements
+
+## Planned Features
+
+* Animated Dashboard
+* Realtime Notifications
+* Glassmorphism Charts
+* Skeleton Loading
+* AI Assistant Panel
+* Interactive Learning Timeline
+* 3D Hover Cards
+* Dynamic Theme Generator
+
+---
+
+# Verification Plan (UI/UX)
+
+## Manual Verification
+
+### Dashboard
+
+* Responsive đúng mobile/tablet/desktop.
+* Blur effect hoạt động ổn định.
+* Sidebar collapse đúng.
+* Card spacing đồng đều.
+
+### Accessibility
+
+* Contrast đạt chuẩn.
+* Keyboard navigation hoạt động.
+* Hover/focus states đầy đủ.
+
+### Performance
+
+* Không lag khi blur.
+* Lighthouse Performance > 85.
+* CLS thấp.
+
+---
+
+## 3000 Tài Khoản Test (Seed Data V7)
+
+Để phục vụ việc kiểm thử hệ thống với số lượng dữ liệu lớn và trực quan hóa các chức năng báo cáo/remind, chúng tôi đã tạo file di trú `V7__seed_large_test_data.sql` chứa **3,000 tài khoản** chia đều cho 3 vai trò:
+
+### 1. 1,000 Tài khoản Quản Trị Viên (Admin)
+* **Tên đăng nhập:** `admin_1` đến `admin_1000`
+* **Mật khẩu:** `admin123` (Plain text, cấu hình `NoOpPasswordEncoder` active)
+* **Email:** `admin_X@javamastery.com`
+* **Trạng thái:** `enabled = TRUE`
+* **Ngày tạo:** Phân bổ đều trong 30 ngày gần đây (`NOW() - (id % 30) ngày`).
+
+### 2. 1,000 Tài khoản Giảng Viên (Instructor)
+* **Tên đăng nhập:** `instructor_1` đến `instructor_1000`
+* **Mật khẩu:** `instructor123`
+* **Email:** `instructor_X@javamastery.com`
+* **Trạng thái:** `enabled = TRUE`
+* **Ngày tạo:** Phân bổ đều trong 30 ngày gần đây.
+
+### 3. 1,000 Tài khoản Học Viên (Student)
+* **Tên đăng nhập:** `student_1` đến `student_1000`
+* **Mật khẩu:** `student123`
+* **Email:** `student_X@javamastery.com`
+* **Các kịch bản kiểm thử tích hợp:**
+  * **Học viên hoạt động bình thường:** 750 tài khoản (`last_active_at` gần đây, phân bổ ngẫu nhiên từ 0-9 ngày trước).
+  * **Học viên lười học (Vắng mặt > 15 ngày):** 250 tài khoản có `last_active_at = NOW() - 20 ngày` (các tài khoản `student_X` với `X` chia hết cho 4). Admin có thể vào Tab "Học viên lười học" để xem danh sách này và gửi email nhắc nhở.
+  * **Tài khoản bị khóa (Disabled):** 50 tài khoản có `enabled = FALSE` (các tài khoản `student_X` với `X` chia hết cho 20). Khi dùng tài khoản này đăng nhập sẽ bị thông báo lỗi.
+  * **Báo cáo đăng ký (Highcharts):** Ngày đăng ký `created_at` phân bổ đều trong 30 ngày qua giúp biểu đồ cột Highcharts trên Admin Dashboard hiển thị biểu đồ phân bố cột đầy đủ và trực quan.
+
+
 

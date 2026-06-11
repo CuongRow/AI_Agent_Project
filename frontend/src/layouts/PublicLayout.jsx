@@ -25,7 +25,14 @@ const PublicLayout = () => {
   const isAdmin = user?.roles?.includes('ROLE_ADMIN');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+    <div className="animated-gradient-bg" style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+      {/* Background Glow Bubble Effects */}
+      <div className="glow-container">
+        <div className="glow-bubble glow-bubble-1" />
+        <div className="glow-bubble glow-bubble-2" />
+        <div className="glow-bubble glow-bubble-3" />
+      </div>
+
       {/* Header */}
       <header className="glass" style={{
         position: 'sticky',

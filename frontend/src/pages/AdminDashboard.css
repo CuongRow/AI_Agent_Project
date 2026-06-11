@@ -1,0 +1,232 @@
+/* AdminDashboard.css - Glassmorphic motions and styling */
+
+/* Page Load stagger delays and reveals are defined globally in index.css */
+
+
+/* 3. Glassmorphic Card Layouts & Dynamic Hover Easing */
+.admin-glass-card {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.04);
+  transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              box-shadow 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), 
+              border-color 0.35s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  overflow: hidden;
+  z-index: 1;
+  border-radius: 24px;
+}
+
+body.dark .admin-glass-card {
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
+  background: rgba(19, 27, 46, 0.45);
+}
+
+.admin-glass-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-5px);
+}
+
+body.dark .admin-glass-card:hover {
+  background: rgba(19, 27, 46, 0.6);
+}
+
+.card-content-wrap {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+}
+
+/* 4. Card Glow & Soft Shadow Highlights on Hover */
+.card-glow-blue::before,
+.card-glow-emerald::before,
+.card-glow-violet::before,
+.card-glow-amber::before,
+.card-glow-rose::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+
+.card-glow-blue::before {
+  background: radial-gradient(circle at 100% 100%, rgba(37, 99, 235, 0.05) 0%, transparent 60%);
+}
+.card-glow-emerald::before {
+  background: radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.05) 0%, transparent 60%);
+}
+.card-glow-violet::before {
+  background: radial-gradient(circle at 100% 100%, rgba(124, 58, 237, 0.05) 0%, transparent 60%);
+}
+.card-glow-amber::before {
+  background: radial-gradient(circle at 100% 100%, rgba(245, 158, 11, 0.05) 0%, transparent 60%);
+}
+.card-glow-rose::before {
+  background: radial-gradient(circle at 100% 100%, rgba(244, 63, 94, 0.05) 0%, transparent 60%);
+}
+
+.admin-glass-card:hover::before {
+  opacity: 1;
+}
+
+/* Accent Glow Hover Shadows */
+.admin-glass-card.card-glow-blue:hover {
+  border-color: rgba(37, 99, 235, 0.3) !important;
+  box-shadow: 0 12px 40px -10px rgba(37, 99, 235, 0.15) !important;
+}
+body.dark .admin-glass-card.card-glow-blue:hover {
+  box-shadow: 0 12px 40px -10px rgba(37, 99, 235, 0.3) !important;
+}
+
+.admin-glass-card.card-glow-emerald:hover {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  box-shadow: 0 12px 40px -10px rgba(16, 185, 129, 0.15) !important;
+}
+body.dark .admin-glass-card.card-glow-emerald:hover {
+  box-shadow: 0 12px 40px -10px rgba(16, 185, 129, 0.3) !important;
+}
+
+.admin-glass-card.card-glow-violet:hover {
+  border-color: rgba(124, 92, 237, 0.3) !important;
+  box-shadow: 0 12px 40px -10px rgba(124, 92, 237, 0.15) !important;
+}
+body.dark .admin-glass-card.card-glow-violet:hover {
+  box-shadow: 0 12px 40px -10px rgba(124, 92, 237, 0.3) !important;
+}
+
+.admin-glass-card.card-glow-amber:hover {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+  box-shadow: 0 12px 40px -10px rgba(245, 158, 11, 0.15) !important;
+}
+body.dark .admin-glass-card.card-glow-amber:hover {
+  box-shadow: 0 12px 40px -10px rgba(245, 158, 11, 0.3) !important;
+}
+
+.admin-glass-card.card-glow-rose:hover {
+  border-color: rgba(244, 63, 94, 0.3) !important;
+  box-shadow: 0 12px 40px -10px rgba(244, 63, 94, 0.15) !important;
+}
+body.dark .admin-glass-card.card-glow-rose:hover {
+  box-shadow: 0 12px 40px -10px rgba(244, 63, 94, 0.3) !important;
+}
+
+/* 5. Sub Glass nested cards */
+.sub-glass {
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 18px;
+  transition: all 0.3s ease;
+}
+
+body.dark .sub-glass {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+.sub-glass:hover {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+body.dark .sub-glass:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* 6. Typography */
+.dashboard-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  background: linear-gradient(135deg, var(--text-main) 30%, var(--text-muted) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+body.dark .dashboard-title {
+  background: linear-gradient(135deg, #ffffff 40%, rgba(255, 255, 255, 0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+/* 7. Semicircular Gauge Animation */
+.gauge-svg-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+  margin: 0 auto;
+}
+
+.gauge-path-bg {
+  stroke: rgba(255, 255, 255, 0.15);
+}
+
+body.dark .gauge-path-bg {
+  stroke: rgba(255, 255, 255, 0.04);
+}
+
+.gauge-progress {
+  stroke-dasharray: 251.3;
+  stroke-dashoffset: 251.3;
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 8. Glassmorphic Skeleton styling */
+.glass-skeleton-card {
+  height: 140px;
+  border-radius: 24px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.glass-skeleton-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.05) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+body.dark .glass-skeleton-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.02) 50%, transparent 75%);
+  background-size: 200% 100%;
+}
+
+/* 9. Rotation Animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin-anim {
+  animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}

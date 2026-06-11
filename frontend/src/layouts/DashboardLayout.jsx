@@ -50,7 +50,14 @@ const DashboardLayout = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: 'var(--background)', color: 'var(--text-main)' }}>
+    <div className="animated-gradient-bg" style={{ display: 'flex', minHeight: '100vh', color: 'var(--text-main)', position: 'relative', overflow: 'hidden' }}>
+      {/* Background Glow Bubble Effects */}
+      <div className="glow-container">
+        <div className="glow-bubble glow-bubble-1" />
+        <div className="glow-bubble glow-bubble-2" />
+        <div className="glow-bubble glow-bubble-3" />
+      </div>
+
       {/* Mobile Header */}
       <header className="glass mobile-header-bar" style={{
         display: 'none', // Shown on mobile via css media queries / JS

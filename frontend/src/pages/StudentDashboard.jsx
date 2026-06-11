@@ -10,6 +10,8 @@ import {
   ChartBarIcon,
   ChevronRightIcon,
 } from '../components/Icons';
+import CountUp from '../components/CountUp';
+import ScrollReveal from '../components/ScrollReveal';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -17,10 +19,21 @@ const StudentDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [progressPct, setProgressPct] = useState(50); // Set initial state to 50% to demonstrate animation behavior
 
   useEffect(() => {
     fetchDashboard();
   }, []);
+
+  useEffect(() => {
+    if (dashboardData) {
+      const pct = Math.round(dashboardData.progressPercentage || 0);
+      const timer = setTimeout(() => {
+        setProgressPct(pct);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [dashboardData]);
 
   const fetchDashboard = async () => {
     try {
@@ -37,7 +50,7 @@ const StudentDashboard = () => {
 
   if (loading) {
     return (
-      <div>
+      <div className="fade-in-up-load stagger-delay-0">
         <div className="skeleton" style={{ height: '36px', width: '40%', marginBottom: '8px' }} />
         <div className="skeleton" style={{ height: '18px', width: '55%', marginBottom: '32px' }} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '24px', marginBottom: '32px' }}>
@@ -59,7 +72,7 @@ const StudentDashboard = () => {
 
   if (error) {
     return (
-      <div style={{ textAlign: 'center', padding: '60px 24px' }}>
+      <div style={{ textAlign: 'center', padding: '60px 24px' }} className="fade-in-up-load stagger-delay-0">
         <ChartBarIcon size={48} style={{ marginBottom: '16px', opacity: 0.5, color: 'var(--text-muted)' }} />
         <h3 style={{ fontWeight: 600, marginBottom: '8px' }}>{error}</h3>
         <button className="btn btn-primary" onClick={fetchDashboard} style={{ marginTop: '16px' }}>Thử lại</button>
@@ -108,8 +121,8 @@ const StudentDashboard = () => {
 
   return (
     <div>
-      {/* Page Header */}
-      <div style={{ marginBottom: '32px' }}>
+      {/* Page Header (Smooth Fade In on Load) */}
+      <div className="fade-in-up-load stagger-delay-0" style={{ marginBottom: '32px' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, marginBottom: '6px' }}>
           {greeting}, {user?.username}! 👋
         </h1>
@@ -118,8 +131,8 @@ const StudentDashboard = () => {
         </p>
       </div>
 
-      {/* Hero Progress Banner */}
-      <div className="card" style={{
+      {/* Hero Progress Banner (Stagger Delay 1) */}
+      <div className="card fade-in-up-load stagger-delay-1" style={{
         padding: 0,
         overflow: 'hidden',
         marginBottom: '32px',
@@ -134,7 +147,7 @@ const StudentDashboard = () => {
         </div>
 
         <div style={{ position: 'relative', zIndex: 1, padding: '36px 32px', display: 'flex', alignItems: 'center', gap: '40px', flexWrap: 'wrap' }}>
-          {/* Circular Progress */}
+          {/* Circular Progress (Animates dynamically on mount) */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <svg width="130" height="130" viewBox="0 0 130 130">
               <circle cx="65" cy="65" r="56" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="10" />
@@ -144,9 +157,9 @@ const StudentDashboard = () => {
                 stroke="#ffffff"
                 strokeWidth="10"
                 strokeLinecap="round"
-                strokeDasharray={`${pct * 3.52} ${352 - pct * 3.52}`}
+                strokeDasharray={`${progressPct * 3.52} ${352 - progressPct * 3.52}`}
                 strokeDashoffset="88"
-                style={{ transition: 'stroke-dasharray 0.8s ease' }}
+                style={{ transition: 'stroke-dasharray 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
               />
             </svg>
             <div style={{
@@ -157,7 +170,9 @@ const StudentDashboard = () => {
               justifyContent: 'center',
               flexDirection: 'column'
             }}>
-              <span style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'var(--font-display)' }}>{pct}%</span>
+              <span style={{ fontSize: '2.2rem', fontWeight: 800, fontFamily: 'var(--font-display)' }}>
+                <CountUp end={pct} />%
+              </span>
               <span style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 500 }}>Hoàn thành</span>
             </div>
           </div>
@@ -168,7 +183,7 @@ const StudentDashboard = () => {
               Tiến Trình Học Tập
             </h2>
             <p style={{ opacity: 0.85, lineHeight: 1.6, marginBottom: '16px' }}>
-              Bạn đã hoàn thành <strong>{completedLessonsCount || 0}</strong> trên <strong>{totalLessonsCount || 0}</strong> bài học.
+              Bạn đã hoàn thành <strong><CountUp end={completedLessonsCount} /></strong> trên <strong>{totalLessonsCount || 0}</strong> bài học.
               {remaining > 0 ? ` Còn ${remaining} bài nữa, hãy cố gắng nhé!` : ' Tuyệt vời, bạn đã hoàn thành tất cả! 🎉'}
             </p>
             <Link to="/courses" className="btn" style={{
@@ -186,7 +201,7 @@ const StudentDashboard = () => {
         </div>
       </div>
 
-      {/* Stat Cards */}
+      {/* Stat Cards (Stagger Delay 2, 3, 4) */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
@@ -194,7 +209,7 @@ const StudentDashboard = () => {
         marginBottom: '40px'
       }}>
         {statCards.map((stat, idx) => (
-          <div key={idx} className="card" style={{
+          <div key={idx} className={`card fade-in-up-load stagger-delay-${idx + 2}`} style={{
             display: 'flex',
             alignItems: 'center',
             gap: '16px',
@@ -218,7 +233,7 @@ const StudentDashboard = () => {
                 {stat.label}
               </p>
               <p style={{ fontSize: '1.5rem', fontWeight: 800, fontFamily: 'var(--font-display)', color: stat.color }}>
-                {stat.value}
+                <CountUp end={stat.value} />
                 {stat.total != null && (
                   <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-muted)' }}>
                     /{stat.total}
@@ -230,8 +245,8 @@ const StudentDashboard = () => {
         ))}
       </div>
 
-      {/* Bookmarked Lessons */}
-      <div>
+      {/* Bookmarked Lessons (Revealed dynamically on Viewport entry) */}
+      <ScrollReveal className="relative z-[1] mb-[40px]" delay={100}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', fontWeight: 700 }}>
             <BookmarkIcon size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px', color: 'var(--accent)' }} />
@@ -300,7 +315,7 @@ const StudentDashboard = () => {
             ))}
           </div>
         )}
-      </div>
+      </ScrollReveal>
     </div>
   );
 };

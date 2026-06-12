@@ -19,7 +19,7 @@ const StudentDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [progressPct, setProgressPct] = useState(50); // Set initial state to 50% to demonstrate animation behavior
+  const [progressPct, setProgressPct] = useState(0);
 
   useEffect(() => {
     fetchDashboard();
@@ -83,6 +83,9 @@ const StudentDashboard = () => {
   const { completedLessonsCount, totalLessonsCount, progressPercentage, bookmarkedLessons } = dashboardData || {};
   const remaining = (totalLessonsCount || 0) - (completedLessonsCount || 0);
   const pct = Math.round(progressPercentage || 0);
+  const CIRCLE_RADIUS = 56;
+  const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
+  const circleOffset = CIRCLE_CIRCUMFERENCE - (progressPct / 100) * CIRCLE_CIRCUMFERENCE;
 
   // Determine greeting
   const hours = new Date().getHours();
@@ -149,17 +152,19 @@ const StudentDashboard = () => {
         <div style={{ position: 'relative', zIndex: 1, padding: '36px 32px', display: 'flex', alignItems: 'center', gap: '40px', flexWrap: 'wrap' }}>
           {/* Circular Progress (Animates dynamically on mount) */}
           <div style={{ position: 'relative', flexShrink: 0 }}>
-            <svg width="130" height="130" viewBox="0 0 130 130">
-              <circle cx="65" cy="65" r="56" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="10" />
+            <svg width="130" height="130" viewBox="0 0 130 130" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="65" cy="65" r={CIRCLE_RADIUS} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="10" />
               <circle
-                cx="65" cy="65" r="56"
+                cx="65" cy="65" r={CIRCLE_RADIUS}
                 fill="none"
                 stroke="#ffffff"
                 strokeWidth="10"
                 strokeLinecap="round"
-                strokeDasharray={`${progressPct * 3.52} ${352 - progressPct * 3.52}`}
-                strokeDashoffset="88"
-                style={{ transition: 'stroke-dasharray 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+                strokeDasharray={CIRCLE_CIRCUMFERENCE}
+                style={{
+                  strokeDashoffset: circleOffset,
+                  transition: 'stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                }}
               />
             </svg>
             <div style={{

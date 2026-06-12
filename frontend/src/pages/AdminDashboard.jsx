@@ -17,7 +17,7 @@ const AdminDashboard = () => {
   const [error, setError] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDark, setIsDark] = useState(() => document.body.classList.contains('dark'));
-  const [gaugeOffset, setGaugeOffset] = useState(125.65); // Set initial state to 125.65 (50% filled) to demonstrate sweep animation
+  const [gaugeOffset, setGaugeOffset] = useState(251.3);
 
 
   // Track system theme changes to update Highcharts dynamically
@@ -382,7 +382,7 @@ const AdminDashboard = () => {
                   strokeWidth="13"
                   strokeLinecap="round"
                   strokeDasharray="251.3"
-                  strokeDashoffset={gaugeOffset}
+                  style={{ strokeDashoffset: gaugeOffset }}
                 />
                 <defs>
                   <linearGradient id="gaugeEmeraldGradient" x1="0%" y1="0%" x2="100%" y2="0%">
